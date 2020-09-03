@@ -83,7 +83,7 @@ class TrainDataset(Dataset):
         The frequency will be used for subsampling like word2vec
         '''
         count = {}
-        for head, relation, tail in triples:
+        for head, tail, relation in triples:
             if (head, relation) not in count:
                 count[(head, relation)] = start
             else:
