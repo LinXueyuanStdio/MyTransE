@@ -1,4 +1,3 @@
-
 import argparse
 import json
 import logging
@@ -14,6 +13,95 @@ from model import KGEModel
 
 from dataloader import TrainDataset
 from dataloader import BidirectionalOneShotIterator
+
+
+class Tester:
+    left: List[int] = []
+    right: List[int] = []
+    seeds = []
+    linkEmbedding = []
+    kg1E = []
+    kg2E = []
+    EA_results = {}
+
+    def read_entity_align_list(self, entity_align_file_path):
+        ret = []
+        with open(entity_align_file_path, encoding='utf-8') as f:
+            for line in f:
+                th = line[:-1].split('\t')
+                self.left.append(int(th[0]))
+                self.right.append(int(th[1]))
+                ret.append((int(th[0]), int(th[1])))
+            self.seeds = ret
+
+    def XRA(self, entity_embedding_file_path):
+        self.linkEmbedding = []
+        with open(entity_embedding_file_path, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+        for i in range(len(lines)):
+            aline = lines[i].strip()
+            aline_list = aline.split()
+            self.linkEmbedding.append(aline_list)
+
+    @staticmethod
+    def get_vec(entities_embedding, id_list, device="cuda"):
+        tensor = torch.LongTensor(id_list).view(-1, 1).to(device)
+        return entities_embedding(tensor).view(-1, 200).cpu().detach().numpy()
+
+    @staticmethod
+    def get_vec2(entities_embedding, id_list, device="cuda"):
+        tensor = torch.LongTensor(id_list).view(-1, 1).to(device)
+        left_vec = torch.index_select(
+            entities_embedding,
+            dim=0,
+            index=tensor
+        ).view(-1, 200).cpu().detach().numpy()
+        return left_vec
+
+    def calculate(self, top_k=(1, 10, 50, 100)):
+        Lvec = np.array([self.linkEmbedding[e1] for e1, e2 in self.seeds])
+        Rvec = np.array([self.linkEmbedding[e2] for e1, e2 in self.seeds])
+        return self.get_hits(Lvec, Rvec, top_k)
+
+    def get_hits(self, Lvec, Rvec, top_k=(1, 10, 50, 100)):
+        sim = spatial.distance.cdist(Lvec, Rvec, metric='cityblock')
+        top_lr = [0] * len(top_k)
+        for i in range(Lvec.shape[0]):  # 对于每个KG1实体
+            rank = sim[i, :].argsort()
+            rank_index = np.where(rank == i)[0][0]
+            for j in range(len(top_k)):
+                if rank_index < top_k[j]:
+                    top_lr[j] += 1
+        top_rl = [0] * len(top_k)
+        for i in range(Rvec.shape[0]):
+            rank = sim[:, i].argsort()
+            rank_index = np.where(rank == i)[0][0]
+            for j in range(len(top_k)):
+                if rank_index < top_k[j]:
+                    top_rl[j] += 1
+        print('For each left:')
+        left = []
+        for i in range(len(top_lr)):
+            hits = top_k[i]
+            hits_value = top_lr[i] / len(self.seeds) * 100
+            left.append((hits, hits_value))
+            print('Hits@%d: %.2f%%' % (hits, hits_value))
+        print('For each right:')
+        right = []
+        for i in range(len(top_rl)):
+            hits = top_k[i]
+            hits_value = top_rl[i] / len(self.seeds) * 100
+            right.append((hits, hits_value))
+            print('Hits@%d: %.2f%%' % (hits, hits_value))
+
+        return {
+            "left": left,
+            "right": right,
+        }
+
+
+t = Tester()
+t.read_entity_align_list('data/fr_en/ref_ent_ids')  # 得到已知对齐实体
 
 
 class run():
@@ -58,7 +146,7 @@ class run():
             lr=current_learning_rate
         )
 
-        #self.optimizer = torch.optim.SGD(self.kge_model.parameters(), lr=current_learning_rate)
+        # self.optimizer = torch.optim.SGD(self.kge_model.parameters(), lr=current_learning_rate)
 
         # Set training dataloader iterator
         train_dataloader_head = DataLoader(
@@ -96,6 +184,14 @@ class run():
             if step % printnum == 0:
                 endtime = Time.time()
                 print("step:%d, cost time: %s, loss is %.6f" % (step, round((endtime - starttime), 3), loss))
+                print("属性消融实验")
+                left_vec = t.get_vec(self.kge_model.entity_embedding, t.left)
+                right_vec = t.get_vec(self.kge_model.entity_embedding, t.right)
+                hits = t.get_hits(left_vec, right_vec)
+                left_hits_10 = hits["left"][2][1]
+                right_hits_10 = hits["right"][2][1]
+                score = (left_hits_10 + right_hits_10) / 2
+                print("score=", score)
                 if loss < lastscore:
                     lastscore = loss
                     self.save_entitylist(self.kge_model)

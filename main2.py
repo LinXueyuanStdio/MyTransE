@@ -459,10 +459,10 @@ for epoch_id in range(start_epoch_id, epochs + 1):
 
         optimizer.step()
         step += 1
+        idx += 1
         progbar.update(idx, [("loss", loss.mean().data.cpu().numpy()),
                              ("positive", pd.sum().data.cpu().numpy()),
                              ("negative", nd.sum().data.cpu().numpy())])
-        idx += 1
 
     summary_writer.add_scalar('Metrics/loss_impacting_samples',
                               loss_impacting_samples_count / samples_count * 100,
