@@ -147,7 +147,10 @@ class KGEModel(nn.Module):
         else:
             score = (head + relation) - tail
         print(score.size())
-        score = self.gamma.item() - torch.norm(score, p=1, dim=2)
+        normscore = torch.norm(score, p=1, dim=2)
+        print(normscore.size())
+        print(self.gamma.size())
+        score = self.gamma.item() - normscore
         return score
 
     def RotatE(self, head, relation, tail, mode):

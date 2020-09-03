@@ -134,7 +134,7 @@ class TestDataset(Dataset):
         return self.len
 
     def __getitem__(self, idx):
-        head, relation, tail = self.triples[idx]
+        head, tail, relation = self.triples[idx]
 
         if self.mode == 'head-batch':
             tmp = [(0, rand_head) if (rand_head, relation, tail) not in self.triple_set
