@@ -28,7 +28,7 @@ class TrainDataset(Dataset):
     def __getitem__(self, idx):
         positive_sample = self.triples[idx]
 
-        head, tail, relation = positive_sample
+        head, relation, tail = positive_sample
 
         subsampling_weight = self.count[(head, relation)] + self.count[(tail, -relation-1)]
         subsampling_weight = torch.sqrt(1 / torch.Tensor([subsampling_weight]))
@@ -83,7 +83,7 @@ class TrainDataset(Dataset):
         The frequency will be used for subsampling like word2vec
         '''
         count = {}
-        for head, tail, relation in triples:
+        for head, relation, tail in triples:
             if (head, relation) not in count:
                 count[(head, relation)] = start
             else:
@@ -105,7 +105,7 @@ class TrainDataset(Dataset):
         true_head = {}
         true_tail = {}
 
-        for head, tail, relation  in triples:
+        for head, relation, tail in triples:
             if (head, relation) not in true_tail:
                 true_tail[(head, relation)] = []
             true_tail[(head, relation)].append(tail)
@@ -134,7 +134,7 @@ class TestDataset(Dataset):
         return self.len
 
     def __getitem__(self, idx):
-        head, tail, relation = self.triples[idx]
+        head, relation, tail = self.triples[idx]
 
         if self.mode == 'head-batch':
             tmp = [(0, rand_head) if (rand_head, relation, tail) not in self.triple_set

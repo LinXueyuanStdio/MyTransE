@@ -84,8 +84,8 @@ def load_static_graph(inPath, fileName, start=0):
         for line in fr:
             line_split = line.split()
             head = int(line_split[0])
-            tail = int(line_split[2])
-            rel = int(line_split[1])
+            tail = int(line_split[1])
+            rel = int(line_split[2])
             SKG.add((head, rel, tail))
     return list(SKG)
 
