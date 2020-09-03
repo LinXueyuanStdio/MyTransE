@@ -187,8 +187,8 @@ class run():
                 endtime = Time.time()
                 print("step:%d, cost time: %s, loss is %.6f" % (step, round((endtime - starttime), 3), loss))
                 print("属性消融实验")
-                left_vec = t.get_vec(self.kge_model.entity_embedding, t.left)
-                right_vec = t.get_vec(self.kge_model.entity_embedding, t.right)
+                left_vec = t.get_vec2(self.kge_model.entity_embedding, t.left)
+                right_vec = t.get_vec2(self.kge_model.entity_embedding, t.right)
                 hits = t.get_hits(left_vec, right_vec)
                 left_hits_10 = hits["left"][2][1]
                 right_hits_10 = hits["right"][2][1]
