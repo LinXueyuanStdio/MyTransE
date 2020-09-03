@@ -297,6 +297,11 @@ class Tester:
             aline_list = aline.split()
             self.linkEmbedding.append(aline_list)
 
+    @staticmethod
+    def get_vec(entities_embedding, id_list, device="cuda"):
+        tensor = torch.LongTensor(id_list).view(-1, 1).to(device)
+        return entities_embedding(tensor).view(-1, 200).cpu().detach().numpy()
+
     def calculate(self, top_k=(1, 10, 50, 100)):
         Lvec = np.array([self.linkEmbedding[e1] for e1, e2 in self.seeds])
         Rvec = np.array([self.linkEmbedding[e2] for e1, e2 in self.seeds])
@@ -420,13 +425,6 @@ print(model)
 
 t = Tester()
 t.read_entity_align_list('data/fr_en/ref_ent_ids')  # 得到已知对齐实体
-left_vec = model.entities_embedding(torch.LongTensor(t.left).view(-1, 1).to(device)).cpu().detach().numpy()
-right_vec = model.entities_embedding(torch.LongTensor(t.right).view(-1, 1).to(device)).cpu().detach().numpy()
-hits = t.get_hits(left_vec, right_vec)
-left_hits_10 = hits["left"][2][1]
-right_hits_10 = hits["right"][2][1]
-score = (left_hits_10 + right_hits_10) / 2
-print("score=", score)
 
 # Training loop
 for epoch_id in range(start_epoch_id, epochs + 1):
@@ -473,8 +471,8 @@ for epoch_id in range(start_epoch_id, epochs + 1):
     if epoch_id % 50 == 0:
         print("loss = ", loss.mean().data.cpu().numpy())
         print("属性消融实验")
-        left_vec = model.entities_embedding(torch.LongTensor(t.left).view(-1, 1))
-        right_vec = model.entities_embedding(torch.LongTensor(t.right).view(-1, 1))
+        left_vec = t.get_vec(model.entities_embedding, t.left)
+        right_vec = t.get_vec(model.entities_embedding, t.right)
         hits = t.get_hits(left_vec, right_vec)
         left_hits_10 = hits["left"][2][1]
         right_hits_10 = hits["right"][2][1]
