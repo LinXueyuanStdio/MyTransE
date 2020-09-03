@@ -270,6 +270,8 @@ class TransE(nn.Module):
 
 
 class Tester:
+    left: List[int] = []
+    right: List[int] = []
     seeds = []
     linkEmbedding = []
     kg1E = []
@@ -281,21 +283,10 @@ class Tester:
         with open(entity_align_file_path, encoding='utf-8') as f:
             for line in f:
                 th = line[:-1].split('\t')
-                x = []
-                for i in range(2):
-                    x.append(int(th[i]))
-                ret.append(tuple(x))
+                self.left.append(int(th[0]))
+                self.right.append(int(th[1]))
+                ret.append((int(th[0]), int(th[1])))
             self.seeds = ret
-
-    def read_KG1_and_KG2_list(self, kg1file, kg2file):
-        with open(kg1file, 'r', encoding='utf-8') as r:
-            kg1lines = r.readlines()
-        with open(kg2file, 'r', encoding='utf-8') as r:
-            kg2lines = r.readlines()
-        for line in kg1lines:
-            self.kg1E.append(line.strip().split()[0])
-        for line in kg2lines:
-            self.kg2E.append(line.strip().split()[0])
 
     def XRA(self, entity_embedding_file_path):
         self.linkEmbedding = []
@@ -306,9 +297,12 @@ class Tester:
             aline_list = aline.split()
             self.linkEmbedding.append(aline_list)
 
-    def get_hits(self, top_k=(1, 10, 50, 100)):
+    def calculate(self, top_k=(1, 10, 50, 100)):
         Lvec = np.array([self.linkEmbedding[e1] for e1, e2 in self.seeds])
         Rvec = np.array([self.linkEmbedding[e2] for e1, e2 in self.seeds])
+        return self.get_hits(Lvec, Rvec, top_k)
+
+    def get_hits(self, Lvec, Rvec, top_k=(1, 10, 50, 100)):
         sim = spatial.distance.cdist(Lvec, Rvec, metric='cityblock')
         top_lr = [0] * len(top_k)
         for i in range(Lvec.shape[0]):  # 对于每个KG1实体
@@ -426,7 +420,13 @@ print(model)
 
 t = Tester()
 t.read_entity_align_list('data/fr_en/ref_ent_ids')  # 得到已知对齐实体
-t.read_KG1_and_KG2_list('data/fr_en/ent_ids_1', 'data/fr_en/ent_ids_2')  # 得到kg1和kg2中的实体
+left_vec = model.entities_embedding(torch.LongTensor(t.left).view(-1, 1))
+right_vec = model.entities_embedding(torch.LongTensor(t.right).view(-1, 1))
+hits = t.get_hits(left_vec, right_vec)
+left_hits_10 = hits["left"][2][1]
+right_hits_10 = hits["right"][2][1]
+score = (left_hits_10 + right_hits_10) / 2
+print("score=", score)
 
 # Training loop
 for epoch_id in range(start_epoch_id, epochs + 1):
@@ -471,15 +471,16 @@ for epoch_id in range(start_epoch_id, epochs + 1):
                               global_step=epoch_id)
 
     if epoch_id % 50 == 0:
-        save_entity_list(model)
         print("loss = ", loss.mean().data.cpu().numpy())
         print("属性消融实验")
-        t.XRA('result/fr_en/ATentsembed.txt')
-        hits = t.get_hits()
+        left_vec = model.entities_embedding(torch.LongTensor(t.left).view(-1, 1))
+        right_vec = model.entities_embedding(torch.LongTensor(t.right).view(-1, 1))
+        hits = t.get_hits(left_vec, right_vec)
         left_hits_10 = hits["left"][2][1]
         right_hits_10 = hits["right"][2][1]
         score = (left_hits_10 + right_hits_10) / 2
         print("score=", score)
         if score > best_score:
             best_score = score
+            save_entity_list(model)
             save_checkpoint(model, optimizer, epoch_id, step, best_score)
