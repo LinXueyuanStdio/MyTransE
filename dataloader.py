@@ -105,7 +105,7 @@ class TrainDataset(Dataset):
         true_head = {}
         true_tail = {}
 
-        for head, relation, tail in triples:
+        for head, tail, relation  in triples:
             if (head, relation) not in true_tail:
                 true_tail[(head, relation)] = []
             true_tail[(head, relation)].append(tail)
