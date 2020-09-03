@@ -65,14 +65,14 @@ class run():
             TrainDataset(train_triples, self.nentity, self.nattribute, self.nvalue, 256, 'head-batch'),
             batch_size=1024,
             shuffle=False,
-            num_workers=0,
+            num_workers=4,
             collate_fn=TrainDataset.collate_fn
         )
         train_dataloader_tail = DataLoader(
             TrainDataset(train_triples, self.nentity, self.nattribute, self.nvalue, 256, 'tail-batch'),
             batch_size=1024,
             shuffle=False,
-            num_workers=0,
+            num_workers=4,
             collate_fn=TrainDataset.collate_fn
         )
         train_iterator = BidirectionalOneShotIterator(train_dataloader_head, train_dataloader_tail)
