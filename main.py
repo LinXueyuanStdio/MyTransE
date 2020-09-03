@@ -119,9 +119,9 @@ if __name__ == '__main__':
     train_SKG = load_static_graph('data/fr_en', 'att_triple_all', 0)
     dirEntity = "data/fr_en/ent_ids_all"
     entityIdNum, entityList = openDetailsAndId(dirEntity)
-    dirAttr = 'data/fr_en/att_value2id_all'
+    dirAttr = 'data/fr_en/att2id_all'
     attrIdNum, attrList = openDetailsAndId(dirAttr)
-    dirValue = "data/fr_en/att2id_all"
+    dirValue = "data/fr_en/att_value2id_all"
     valueIdNum, valueList = openDetailsAndId(dirValue)
     print("entity:", entityIdNum, "attr:", attrIdNum, "value:", valueIdNum)
 
