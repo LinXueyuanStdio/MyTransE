@@ -8,6 +8,8 @@ from typing import List
 
 import numpy as np
 import torch
+from scipy import spatial
+
 from utils import *
 from torch.utils.data import DataLoader
 
@@ -52,13 +54,13 @@ class Tester:
 
     @staticmethod
     def get_vec2(entities_embedding, id_list, device="cuda"):
-        tensor = torch.LongTensor(id_list).view(-1, 1).to(device)
-        left_vec = torch.index_select(
+        tensor = torch.LongTensor(id_list).view(-1).to(device)
+        vec = torch.index_select(
             entities_embedding,
             dim=0,
             index=tensor
         ).view(-1, 200).cpu().detach().numpy()
-        return left_vec
+        return vec
 
     def calculate(self, top_k=(1, 10, 50, 100)):
         Lvec = np.array([self.linkEmbedding[e1] for e1, e2 in self.seeds])
