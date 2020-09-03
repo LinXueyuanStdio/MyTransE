@@ -80,6 +80,7 @@ class run():
         if self.isCUDA == 1:
             self.kge_model = self.kge_model.cuda()
 
+        print(self.kge_model)
         # start training
         print("start training")
         init_step = 0
