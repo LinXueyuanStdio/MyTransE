@@ -420,8 +420,8 @@ print(model)
 
 t = Tester()
 t.read_entity_align_list('data/fr_en/ref_ent_ids')  # 得到已知对齐实体
-left_vec = model.entities_embedding(torch.LongTensor(t.left).view(-1, 1).to(device))
-right_vec = model.entities_embedding(torch.LongTensor(t.right).view(-1, 1).to(device))
+left_vec = model.entities_embedding(torch.LongTensor(t.left).view(-1, 1).to(device)).cpu().detach().numpy()
+right_vec = model.entities_embedding(torch.LongTensor(t.right).view(-1, 1).to(device)).cpu().detach().numpy()
 hits = t.get_hits(left_vec, right_vec)
 left_hits_10 = hits["left"][2][1]
 right_hits_10 = hits["right"][2][1]
