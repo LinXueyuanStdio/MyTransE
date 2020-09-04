@@ -62,27 +62,27 @@ class Tester:
         ).view(-1, 200).cpu().detach().numpy()
         return vec
 
-    def calculate(self, top_k=(1, 10, 50, 100)):
-        Lvec = np.array([self.linkEmbedding[e1] for e1, e2 in self.seeds])
-        Rvec = np.array([self.linkEmbedding[e2] for e1, e2 in self.seeds])
-        return self.get_hits(Lvec, Rvec, top_k)
+    # def calculate(self, top_k=(1, 10, 50, 100)):
+    #     Lvec = np.array([self.linkEmbedding[e1] for e1, e2 in self.seeds])
+    #     Rvec = np.array([self.linkEmbedding[e2] for e1, e2 in self.seeds])
+    #     return self.get_hits(Lvec, Rvec, top_k)
 
-    def get_hits(self, Lvec, Rvec, top_k=(1, 10, 50, 100)):
-        sim = spatial.distance.cdist(Lvec, Rvec, metric='euclidean')
+    def get_hit(self, left_entity_ids, right_entity_ids, left_entity_vec, all_entity_vec, top_k=(1, 10, 50, 100)):
+        distance_left_i_to_all_j = spatial.distance.cdist(left_entity_vec, all_entity_vec, metric='euclidean')
         top_lr = [0] * len(top_k)
-        for i in range(Lvec.shape[0]):  # 对于每个KG1实体
-            rank = sim[i, :].argsort()
-            rank_index = np.where(rank == i)[0][0]
-            for j in range(len(top_k)):
-                if rank_index < top_k[j]:
-                    top_lr[j] += 1
-        top_rl = [0] * len(top_k)
-        for i in range(Rvec.shape[0]):
-            rank = sim[:, i].argsort()
-            rank_index = np.where(rank == i)[0][0]
-            for j in range(len(top_k)):
-                if rank_index < top_k[j]:
-                    top_rl[j] += 1
+        for i in range(len(left_entity_ids)):  # 对于每个KG1实体
+            rank = distance_left_i_to_all_j[i, :].argsort()
+            rank_index = np.where(rank == right_entity_ids[i])[0][0]
+            for k in range(len(top_k)):
+                if rank_index < top_k[k]:
+                    top_lr[k] += 1
+        return top_lr
+
+    def get_hits(self, left_entity_ids, right_entity_ids, left_entity_vec, right_entity_vec, all_entity_vec, top_k=(1, 10, 50, 100)):
+        # Lvec nxd, Rvec mxd, sim nxm
+        # sim[i, j]为Lvec第i个实体和Rvec第j个实体的距离
+        top_lr = self.get_hit(left_entity_ids, right_entity_ids, left_entity_vec, all_entity_vec, top_k)
+        top_rl = self.get_hit(right_entity_ids, left_entity_ids, right_entity_vec, all_entity_vec, top_k)
         print('For each left:')
         left = []
         for i in range(len(top_lr)):
@@ -189,9 +189,20 @@ class run():
                 endtime = Time.time()
                 print("step:%d, cost time: %s, loss is %.6f" % (step, round((endtime - starttime), 3), loss))
                 print("属性消融实验")
-                left_vec = t.get_vec2(self.kge_model.entity_embedding, t.left)
-                right_vec = t.get_vec2(self.kge_model.entity_embedding, t.right)
-                hits = t.get_hits(left_vec, right_vec)
+                left_ids = torch.LongTensor(t.left).view(-1).to("cuda")
+                left_vec = torch.index_select(
+                    self.kge_model.entity_embedding,
+                    dim=0,
+                    index=left_ids
+                ).view(-1, 200).cpu().detach().numpy()
+                right_ids = torch.LongTensor(t.right).view(-1).to("cuda")
+                right_vec = torch.index_select(
+                    self.kge_model.entity_embedding,
+                    dim=0,
+                    index=right_ids
+                ).view(-1, 200).cpu().detach().numpy()
+                all_entity_vec = t.get_vec2(self.kge_model.entity_embedding, entity2id)
+                hits = t.get_hits(left_ids.cpu().detach().numpy(), right_ids.cpu().detach().numpy(), left_vec, right_vec, all_entity_vec)
                 left_hits_10 = hits["left"][2][1]
                 right_hits_10 = hits["right"][2][1]
                 score = (left_hits_10 + right_hits_10) / 2
