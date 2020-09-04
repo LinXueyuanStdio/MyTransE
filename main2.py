@@ -13,6 +13,9 @@ import random
 import time
 import sys
 
+from dataloader import TrainDataset
+from dataloader import BidirectionalOneShotIterator
+
 torch.random.manual_seed(123456)
 
 
@@ -132,16 +135,16 @@ class Progbar(object):
 class DBP15kDataset(data.Dataset):
     """DBP15k"""
 
-    def __init__(self, dir_triple: str, entity_ids: List, value_ids: List):
+    def __init__(self, dir_triple: str, entity_ids: List[int], value_ids: List[int]):
         # 读取三元组
         self.triple = list()
         with open(dir_triple, 'r') as fr:
             for line in fr:
                 line_split = line.split()
-                head = int(line_split[0])
+                entity = int(line_split[0])
                 attr = int(line_split[1])
                 value = int(line_split[2])
-                self.triple.append((head, attr, value))
+                self.triple.append((entity, attr, value))
         self.triple = list(set(self.triple))
 
         # 构造负例
@@ -242,10 +245,7 @@ class TransE(nn.Module):
         self.values_embedding.weight.data[:-1, :] \
             .div_(self.values_embedding.weight.data[:-1, :].norm(p=2, dim=1, keepdim=True))
 
-        assert positive_triplets.size()[1] == 3
         positive_distances = self._distance(positive_triplets)
-
-        assert negative_triplets.size()[1] == 3
         negative_distances = self._distance(negative_triplets)
         target = torch.tensor([-1], dtype=torch.long, device=self.device)
         loss = self.criterion(positive_distances, negative_distances, target)
@@ -395,6 +395,18 @@ def read_ids(dir_path, sp="\t"):
     return ids
 
 
+def read_triple(triple_path):
+    with open(triple_path, 'r') as fr:
+        SKG = set()
+        for line in fr:
+            line_split = line.split()
+            head = int(line_split[0])
+            tail = int(line_split[1])
+            rel = int(line_split[2])
+            SKG.add((head, rel, tail))
+    return list(SKG)
+
+
 entity_list = read_ids("data/fr_en/ent_ids_all")
 attr_list = read_ids("data/fr_en/att2id_all")
 value_list = read_ids("data/fr_en/att_value2id_all")
@@ -409,6 +421,24 @@ tensorboard_log_dir = "./result/log/"
 checkpoint_path = "./result/fr_en/checkpoint.tar"
 train_set = DBP15kDataset('data/fr_en/att_triple_all', entity_list, value_list)
 train_generator = data.DataLoader(train_set, batch_size=2048)
+
+train_triples = read_triple("data/fr_en/att_triple_all")
+train_dataloader_head = data.DataLoader(
+    TrainDataset(train_triples, entity_count, attr_count, value_count, 256, 'head-batch'),
+    batch_size=1024,
+    shuffle=False,
+    num_workers=4,
+    collate_fn=TrainDataset.collate_fn
+)
+train_dataloader_tail = data.DataLoader(
+    TrainDataset(train_triples, entity_count, attr_count, value_count, 256, 'tail-batch'),
+    batch_size=1024,
+    shuffle=False,
+    num_workers=4,
+    collate_fn=TrainDataset.collate_fn
+)
+train_iterator = BidirectionalOneShotIterator(train_dataloader_head, train_dataloader_tail)
+
 model = TransE(entity_count, attr_count, value_count, device).to(device)
 optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 summary_writer = tensorboard.SummaryWriter(log_dir=tensorboard_log_dir)

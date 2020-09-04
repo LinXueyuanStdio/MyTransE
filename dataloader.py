@@ -9,8 +9,9 @@ import torch
 
 from torch.utils.data import Dataset
 
+
 class TrainDataset(Dataset):
-    def __init__(self, triples, nentity, nrelation,  nvalue, negative_sample_size, mode):
+    def __init__(self, triples, nentity, nrelation, nvalue, negative_sample_size, mode):
         self.len = len(triples)
         self.triples = triples
         self.triple_set = set(triples)
@@ -30,7 +31,7 @@ class TrainDataset(Dataset):
 
         head, relation, tail = positive_sample
 
-        subsampling_weight = self.count[(head, relation)] + self.count[(tail, -relation-1)]
+        subsampling_weight = self.count[(head, relation)] + self.count[(tail, -relation - 1)]
         subsampling_weight = torch.sqrt(1 / torch.Tensor([subsampling_weight]))
 
         negative_sample_list = []
@@ -89,10 +90,10 @@ class TrainDataset(Dataset):
             else:
                 count[(head, relation)] += 1
 
-            if (tail, -relation-1) not in count:
-                count[(tail, -relation-1)] = start
+            if (tail, -relation - 1) not in count:
+                count[(tail, -relation - 1)] = start
             else:
-                count[(tail, -relation-1)] += 1
+                count[(tail, -relation - 1)] += 1
         return count
 
     @staticmethod
@@ -166,6 +167,7 @@ class TestDataset(Dataset):
         filter_bias = torch.stack([_[2] for _ in data], dim=0)
         mode = data[0][3]
         return positive_sample, negative_sample, filter_bias, mode
+
 
 class BidirectionalOneShotIterator(object):
     def __init__(self, dataloader_head, dataloader_tail):

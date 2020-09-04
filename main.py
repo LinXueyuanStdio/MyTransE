@@ -68,7 +68,7 @@ class Tester:
         return self.get_hits(Lvec, Rvec, top_k)
 
     def get_hits(self, Lvec, Rvec, top_k=(1, 10, 50, 100)):
-        sim = spatial.distance.cdist(Lvec, Rvec, metric='cityblock')
+        sim = spatial.distance.cdist(Lvec, Rvec, metric='euclidean')
         top_lr = [0] * len(top_k)
         for i in range(Lvec.shape[0]):  # 对于每个KG1实体
             rank = sim[i, :].argsort()
