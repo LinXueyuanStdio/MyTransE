@@ -76,7 +76,7 @@ class Tester:
         top_lr = [0] * len(top_k)
         for i in range(len(left_entity_ids)):  # 对于每个KG1实体
             rank = distance_left_i_to_all_j[i, :].argsort()
-            true_index = all_entity_ids.index(right_entity_ids[i])
+            true_index = np.where(all_entity_ids == right_entity_ids[i])[0][0]
             if count < 5:
                 count += 1
                 print("(", left_entity_ids[i], right_entity_ids[i], ")", "right index =", true_index)
