@@ -67,7 +67,10 @@ class Tester:
     #     Rvec = np.array([self.linkEmbedding[e2] for e1, e2 in self.seeds])
     #     return self.get_hits(Lvec, Rvec, top_k)
 
-    def get_hit(self, left_entity_ids, right_entity_ids, all_entity_ids, left_entity_vec, all_entity_vec, top_k=(1, 10, 50, 100)):
+    def get_hit(self,
+                left_entity_ids, right_entity_ids, all_entity_ids,
+                left_entity_vec, all_entity_vec,
+                top_k=(1, 10, 50, 100)):
         count = 0
         distance_left_i_to_all_j = spatial.distance.cdist(left_entity_vec, all_entity_vec, metric='euclidean')
         top_lr = [0] * len(top_k)
@@ -77,20 +80,27 @@ class Tester:
             rank_index = np.where(sort_index_list == true_index)[0][0]  # 对齐实体的下标在排序后下标列表中的下标
             if count < 5:  # 打印 5 次 log
                 count += 1
-                print("(", left_entity_ids[i], right_entity_ids[i], ")", "right index =", true_index, ", rank index =",rank_index)
+                print("(", left_entity_ids[i], right_entity_ids[i], ")",
+                      ", true index =", true_index,
+                      ", rank in all =", rank_index)
             for k in range(len(top_k)):
                 if rank_index < top_k[k]:  # 前 k 的下标视为 hit 命中
                     top_lr[k] += 1
         return top_lr
 
-    def get_hits(self, left_entity_ids, right_entity_ids, all_entity_ids, left_entity_vec, right_entity_vec, all_entity_vec, top_k=(1, 10, 50, 100)):
+    def get_hits(self,
+                 left_entity_ids, right_entity_ids, all_entity_ids,
+                 left_entity_vec, right_entity_vec,  all_entity_vec,
+                 top_k=(1, 10, 50, 100)):
         # Lvec nxd, Rvec mxd, sim nxm
         # sim[i, j]为Lvec第i个实体和Rvec第j个实体的距离
         print("left entities:", len(left_entity_ids))
         print("right entities:", len(right_entity_ids))
         print("all entities:", len(all_entity_ids))
-        top_lr = self.get_hit(left_entity_ids, right_entity_ids, all_entity_ids, left_entity_vec, all_entity_vec, top_k)
-        top_rl = self.get_hit(right_entity_ids, left_entity_ids, all_entity_ids, right_entity_vec, all_entity_vec, top_k)
+        top_lr = self.get_hit(left_entity_ids, right_entity_ids, all_entity_ids,
+                              left_entity_vec, all_entity_vec, top_k)
+        top_rl = self.get_hit(right_entity_ids, left_entity_ids, all_entity_ids,
+                              right_entity_vec, all_entity_vec, top_k)
         print('For each left:')
         left = []
         for i in range(len(top_lr)):
@@ -243,7 +253,7 @@ def openDetailsAndId(dir, sp="\t"):
 
 if __name__ == '__main__':
     print('initial')
-    train_SKG = load_static_graph('data/fr_en', 'att_triple_all', 0)
+    train_SKG = load_static_graph('data/fr_en', 'triples_all', 0)
     dirEntity = "data/fr_en/ent_ids_all"
     entityIdNum, entityList = openDetailsAndId(dirEntity)
     dirAttr = 'data/fr_en/att2id_all'

@@ -83,7 +83,7 @@ class KGEModel(nn.Module):
             ).unsqueeze(1)
 
             tail = torch.index_select(
-                self.value_embedding,
+                self.entity_embedding,
                 dim=0,
                 index=sample[:, 2]
             ).unsqueeze(1)
@@ -105,7 +105,7 @@ class KGEModel(nn.Module):
             ).unsqueeze(1)
 
             tail = torch.index_select(
-                self.value_embedding,
+                self.entity_embedding,
                 dim=0,
                 index=tail_part[:, 2]
             ).unsqueeze(1)
@@ -127,7 +127,7 @@ class KGEModel(nn.Module):
             ).unsqueeze(1)
 
             tail = torch.index_select(
-                self.value_embedding,
+                self.entity_embedding,
                 dim=0,
                 index=tail_part.view(-1)
             ).view(batch_size, negative_sample_size, -1)
