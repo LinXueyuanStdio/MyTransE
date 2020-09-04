@@ -67,22 +67,30 @@ class Tester:
     #     Rvec = np.array([self.linkEmbedding[e2] for e1, e2 in self.seeds])
     #     return self.get_hits(Lvec, Rvec, top_k)
 
-    def get_hit(self, left_entity_ids, right_entity_ids, left_entity_vec, all_entity_vec, top_k=(1, 10, 50, 100)):
+    def get_hit(self, left_entity_ids, right_entity_ids, all_entity_ids, left_entity_vec, all_entity_vec, top_k=(1, 10, 50, 100)):
+        print("left entities:", len(left_entity_ids))
+        print("right entities:", len(right_entity_ids))
+        print("all entities:", len(all_entity_ids))
+        count = 0
         distance_left_i_to_all_j = spatial.distance.cdist(left_entity_vec, all_entity_vec, metric='euclidean')
         top_lr = [0] * len(top_k)
         for i in range(len(left_entity_ids)):  # 对于每个KG1实体
             rank = distance_left_i_to_all_j[i, :].argsort()
-            rank_index = np.where(rank == right_entity_ids[i])[0][0]
+            true_index = all_entity_ids.index(right_entity_ids[i])
+            if count < 5:
+                count += 1
+                print("(", left_entity_ids[i], right_entity_ids[i], ")", "right index =", true_index)
+            rank_index = np.where(rank == true_index)[0][0]
             for k in range(len(top_k)):
                 if rank_index < top_k[k]:
                     top_lr[k] += 1
         return top_lr
 
-    def get_hits(self, left_entity_ids, right_entity_ids, left_entity_vec, right_entity_vec, all_entity_vec, top_k=(1, 10, 50, 100)):
+    def get_hits(self, left_entity_ids, right_entity_ids, all_entity_ids, left_entity_vec, right_entity_vec, all_entity_vec, top_k=(1, 10, 50, 100)):
         # Lvec nxd, Rvec mxd, sim nxm
         # sim[i, j]为Lvec第i个实体和Rvec第j个实体的距离
-        top_lr = self.get_hit(left_entity_ids, right_entity_ids, left_entity_vec, all_entity_vec, top_k)
-        top_rl = self.get_hit(right_entity_ids, left_entity_ids, right_entity_vec, all_entity_vec, top_k)
+        top_lr = self.get_hit(left_entity_ids, right_entity_ids, all_entity_ids, left_entity_vec, all_entity_vec, top_k)
+        top_rl = self.get_hit(right_entity_ids, left_entity_ids, all_entity_ids, right_entity_vec, all_entity_vec, top_k)
         print('For each left:')
         left = []
         for i in range(len(top_lr)):
@@ -201,8 +209,16 @@ class run():
                     dim=0,
                     index=right_ids
                 ).view(-1, 200).cpu().detach().numpy()
-                all_entity_vec = t.get_vec2(self.kge_model.entity_embedding, entity2id)
-                hits = t.get_hits(left_ids.cpu().detach().numpy(), right_ids.cpu().detach().numpy(), left_vec, right_vec, all_entity_vec)
+                all_entity_ids = torch.LongTensor(entity2id).view(-1).to("cuda")
+                all_entity_vec = torch.index_select(
+                    self.kge_model.entity_embedding,
+                    dim=0,
+                    index=all_entity_ids
+                ).view(-1, 200).cpu().detach().numpy()
+                hits = t.get_hits(left_ids.cpu().detach().numpy(),
+                                  right_ids.cpu().detach().numpy(),
+                                  all_entity_ids.cpu().detach().numpy(),
+                                  left_vec, right_vec, all_entity_vec)
                 left_hits_10 = hits["left"][2][1]
                 right_hits_10 = hits["right"][2][1]
                 score = (left_hits_10 + right_hits_10) / 2
