@@ -220,7 +220,7 @@ def openDetailsAndId(dir, sp="\t"):
         lines = file.readlines()
         for line in lines:
             DetailsAndId = line.strip().split(sp)
-            list.append(DetailsAndId[0])
+            list.append(int(DetailsAndId[0]))
             idNum += 1
     return idNum, list
 
