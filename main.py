@@ -68,9 +68,6 @@ class Tester:
     #     return self.get_hits(Lvec, Rvec, top_k)
 
     def get_hit(self, left_entity_ids, right_entity_ids, all_entity_ids, left_entity_vec, all_entity_vec, top_k=(1, 10, 50, 100)):
-        print("left entities:", len(left_entity_ids))
-        print("right entities:", len(right_entity_ids))
-        print("all entities:", len(all_entity_ids))
         count = 0
         distance_left_i_to_all_j = spatial.distance.cdist(left_entity_vec, all_entity_vec, metric='euclidean')
         top_lr = [0] * len(top_k)
@@ -89,20 +86,23 @@ class Tester:
     def get_hits(self, left_entity_ids, right_entity_ids, all_entity_ids, left_entity_vec, right_entity_vec, all_entity_vec, top_k=(1, 10, 50, 100)):
         # Lvec nxd, Rvec mxd, sim nxm
         # sim[i, j]为Lvec第i个实体和Rvec第j个实体的距离
+        print("left entities:", len(left_entity_ids))
+        print("right entities:", len(right_entity_ids))
+        print("all entities:", len(all_entity_ids))
         top_lr = self.get_hit(left_entity_ids, right_entity_ids, all_entity_ids, left_entity_vec, all_entity_vec, top_k)
         top_rl = self.get_hit(right_entity_ids, left_entity_ids, all_entity_ids, right_entity_vec, all_entity_vec, top_k)
         print('For each left:')
         left = []
         for i in range(len(top_lr)):
             hits = top_k[i]
-            hits_value = top_lr[i] / len(left_entity_ids) * 100
+            hits_value = top_lr[i] / len(all_entity_ids) * 100
             left.append((hits, hits_value))
             print('Hits@%d: %.2f%%' % (hits, hits_value))
         print('For each right:')
         right = []
         for i in range(len(top_rl)):
             hits = top_k[i]
-            hits_value = top_rl[i] / len(right_entity_ids) * 100
+            hits_value = top_rl[i] / len(all_entity_ids) * 100
             right.append((hits, hits_value))
             print('Hits@%d: %.2f%%' % (hits, hits_value))
 
