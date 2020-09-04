@@ -72,14 +72,14 @@ class Tester:
         distance_left_i_to_all_j = spatial.distance.cdist(left_entity_vec, all_entity_vec, metric='euclidean')
         top_lr = [0] * len(top_k)
         for i in range(len(left_entity_ids)):  # 对于每个KG1实体
-            rank = distance_left_i_to_all_j[i, :].argsort()
-            true_index = np.where(all_entity_ids == right_entity_ids[i])[0][0]
-            rank_index = np.where(rank == true_index)[0][0]
-            if count < 5:
+            sort_index_list = distance_left_i_to_all_j[i, :].argsort()  # 全部实体按距离排序后的下标列表
+            true_index = np.where(all_entity_ids == right_entity_ids[i])[0][0]  # 对齐实体在实体表中的下标
+            rank_index = np.where(sort_index_list == true_index)[0][0]  # 对齐实体的下标在排序后下标列表中的下标
+            if count < 5:  # 打印 5 次 log
                 count += 1
                 print("(", left_entity_ids[i], right_entity_ids[i], ")", "right index =", true_index, ", rank index =",rank_index)
             for k in range(len(top_k)):
-                if rank_index < top_k[k]:
+                if rank_index < top_k[k]:  # 前 k 的下标视为 hit 命中
                     top_lr[k] += 1
         return top_lr
 
