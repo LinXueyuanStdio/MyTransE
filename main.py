@@ -74,10 +74,10 @@ class Tester:
         for i in range(len(left_entity_ids)):  # 对于每个KG1实体
             rank = distance_left_i_to_all_j[i, :].argsort()
             true_index = np.where(all_entity_ids == right_entity_ids[i])[0][0]
+            rank_index = np.where(rank == true_index)[0][0]
             if count < 5:
                 count += 1
-                print("(", left_entity_ids[i], right_entity_ids[i], ")", "right index =", true_index)
-            rank_index = np.where(rank == true_index)[0][0]
+                print("(", left_entity_ids[i], right_entity_ids[i], ")", "right index =", true_index, ", rank index =",rank_index)
             for k in range(len(top_k)):
                 if rank_index < top_k[k]:
                     top_lr[k] += 1
