@@ -95,14 +95,14 @@ class Tester:
         left = []
         for i in range(len(top_lr)):
             hits = top_k[i]
-            hits_value = top_lr[i] / len(self.seeds) * 100
+            hits_value = top_lr[i] / len(left_entity_ids) * 100
             left.append((hits, hits_value))
             print('Hits@%d: %.2f%%' % (hits, hits_value))
         print('For each right:')
         right = []
         for i in range(len(top_rl)):
             hits = top_k[i]
-            hits_value = top_rl[i] / len(self.seeds) * 100
+            hits_value = top_rl[i] / len(right_entity_ids) * 100
             right.append((hits, hits_value))
             print('Hits@%d: %.2f%%' % (hits, hits_value))
 
