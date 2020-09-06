@@ -139,23 +139,26 @@ class run():
         entityVectorFile.close()
 
     def init_by_train_seeds(self, model: KGEModel, train_seeds: List[Tuple[int, int]], device="cuda"):
+        print_count = 0
         for left_entity, right_entity in train_seeds:
-            print("left_entity:", left_entity, "right_entity:", right_entity)
             model.entity_embedding[left_entity] = model.entity_embedding[right_entity]
-            left_entity_id = torch.LongTensor([left_entity]).view(-1)
-            right_entity_id = torch.LongTensor([right_entity]).view(-1)
-            print("left_entity_id:", left_entity_id, "right_entity_id:", right_entity_id)
-            left_entity_vec = torch.index_select(
-                model.entity_embedding,
-                dim=0,
-                index=left_entity_id
-            ).view(-1, 200).detach().numpy()
-            right_entity_vec = torch.index_select(
-                model.entity_embedding,
-                dim=0,
-                index=right_entity_id
-            ).view(-1, 200).detach().numpy()
-            print("left_entity_vec:", left_entity_vec, "right_entity_vec:", right_entity_vec)
+            if print_count < 3:
+                print_count += 1
+                print("left_entity:", left_entity, "right_entity:", right_entity)
+                left_entity_id = torch.LongTensor([left_entity]).view(-1)
+                right_entity_id = torch.LongTensor([right_entity]).view(-1)
+                print("left_entity_id:", left_entity_id, "right_entity_id:", right_entity_id)
+                left_entity_vec = torch.index_select(
+                    model.entity_embedding,
+                    dim=0,
+                    index=left_entity_id
+                ).view(-1, 200).detach().numpy()
+                right_entity_vec = torch.index_select(
+                    model.entity_embedding,
+                    dim=0,
+                    index=right_entity_id
+                ).view(-1, 200).detach().numpy()
+                print("left_entity_vec:", left_entity_vec, "right_entity_vec:", right_entity_vec)
 
     def train(self, train_triples, entity2id, att2id, value2id):
         self.nentity = len(entity2id)
