@@ -20,7 +20,7 @@ from dataloader import TestDataset
 
 
 class KGEModel(nn.Module):
-    def __init__(self,train_seeds, nentity, nrelation, nvalue, hidden_dim, gamma, double_entity_embedding=False,
+    def __init__(self, train_seeds, nentity, nrelation, nvalue, hidden_dim, gamma, double_entity_embedding=False,
                  double_relation_embedding=False):
         super(KGEModel, self).__init__()
         # self.model_name = model_name
@@ -136,7 +136,6 @@ class KGEModel(nn.Module):
                 index=tail_part.view(-1)
             ).view(batch_size, negative_sample_size, -1)
 
-
         else:
             raise ValueError('mode %s not supported' % mode)
 
@@ -242,7 +241,6 @@ class KGEModel(nn.Module):
             collate_fn=TestDataset.collate_fn
         )
 
-
         test_dataset_list = [test_dataloader_head, test_dataloader_tail]
 
         metrics = []
@@ -290,7 +288,7 @@ class KGEModel(nn.Module):
                             'MRR': 1.0 / ranking,
                         })
 
-                    #if step % 1000 == 0:
+                    # if step % 1000 == 0:
                     #    print('Evaluating the model... (%d/%d)' % (step, total_steps))
 
                     step += 1
