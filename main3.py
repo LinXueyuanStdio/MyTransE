@@ -302,14 +302,13 @@ class run():
 
         # start training
         print("start training")
-        init_step = 0
-        # Training Loop
-        starttime = Time.time()
-
+        init_step = 1
         steps = 20001
         printnum = 10000
         lastscore = 100
         progbar = Progbar(max_step=steps-init_step)
+        # Training Loop
+        starttime = Time.time()
         for step in range(init_step, steps):
             loss = self.kge_model.train_step(self.kge_model, self.optimizer, train_iterator, self.isCUDA)
             progbar.update(step-init_step, [
@@ -317,7 +316,7 @@ class run():
                 ("loss", loss),
                 ("cost", round((Time.time() - starttime)))
             ])
-            if step % printnum == 0:
+            if step > init_step and step % printnum == 0:
                 print("属性消融实验")
                 left_vec = t.get_vec2(self.kge_model.entity_embedding, t.left)
                 right_vec = t.get_vec2(self.kge_model.entity_embedding, t.right)
