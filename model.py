@@ -44,6 +44,7 @@ class KGEModel(nn.Module):
         self.value_dim = hidden_dim * 2 if double_entity_embedding else hidden_dim
 
         self.entity_embedding = nn.Parameter(torch.zeros(nentity, self.entity_dim))
+        # nn.init.normal_(self.entity_embedding)
         nn.init.uniform_(
             tensor=self.entity_embedding,
             a=-self.embedding_range.item(),
@@ -51,6 +52,7 @@ class KGEModel(nn.Module):
         )
 
         self.relation_embedding = nn.Parameter(torch.zeros(nrelation, self.relation_dim))
+        # nn.init.normal_(self.relation_embedding)
         nn.init.uniform_(
             tensor=self.relation_embedding,
             a=-self.embedding_range.item(),
@@ -58,13 +60,12 @@ class KGEModel(nn.Module):
         )
 
         self.value_embedding = nn.Parameter(torch.zeros(nvalue, self.value_dim))
+        # nn.init.normal_(self.value_embedding)
         nn.init.uniform_(
             tensor=self.value_embedding,
             a=-self.embedding_range.item(),
             b=self.embedding_range.item()
         )
-
-        self.modulus = nn.Parameter(torch.Tensor([[0.5 * self.embedding_range.item()]]))
 
     def forward(self, sample, mode='single'):
         if mode == 'single':
