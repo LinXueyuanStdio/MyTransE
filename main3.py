@@ -147,12 +147,12 @@ class run():
                 model.entity_embedding,
                 dim=0,
                 index=left_entity_id
-            ).view(-1, 200)
+            ).view(-1, 200).cpu().detach().numpy()
             right_entity_vec = torch.index_select(
                 model.entity_embedding,
                 dim=0,
                 index=right_entity_id
-            ).view(-1, 200)
+            ).view(-1, 200).cpu().detach().numpy()
             print("left_entity:", left_entity, "right_entity:", right_entity)
             print("left_entity_id:", left_entity_id, "right_entity_id:", right_entity_id)
             print("left_entity_vec:", left_entity_vec, "right_entity_vec:", right_entity_vec)
