@@ -167,14 +167,14 @@ class run():
 
         # Set training dataloader iterator
         train_dataloader_head = DataLoader(
-            TrainDataset(train_triples, self.nentity, self.nattribute, self.nentity, 256, 'head-batch'),
+            TrainDataset(train_triples, self.nentity, self.nattribute, self.nvalue, 256, 'head-batch'),
             batch_size=1024,
             shuffle=False,
             num_workers=4,
             collate_fn=TrainDataset.collate_fn
         )
         train_dataloader_tail = DataLoader(
-            TrainDataset(train_triples, self.nentity, self.nattribute, self.nentity, 256, 'tail-batch'),
+            TrainDataset(train_triples, self.nentity, self.nattribute, self.nvalue, 256, 'tail-batch'),
             batch_size=1024,
             shuffle=False,
             num_workers=4,
