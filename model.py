@@ -43,16 +43,16 @@ class KGEModel(nn.Module):
         self.relation_dim = hidden_dim * 2 if double_relation_embedding else hidden_dim
         self.value_dim = hidden_dim * 2 if double_entity_embedding else hidden_dim
 
-        self.entity_embedding = nn.Parameter(torch.zeros(nentity, self.entity_dim))
-        # nn.init.normal_(self.entity_embedding)
+        entity_weight = torch.zeros(nentity, self.entity_dim)
         nn.init.uniform_(
-            tensor=self.entity_embedding,
+            tensor=entity_weight,
             a=-self.embedding_range.item(),
             b=self.embedding_range.item()
         )
         for left_entity, right_entity in train_seeds:
-            self.entity_embedding[left_entity] = self.entity_embedding[right_entity]
-        self.entity_embedding.requires_grad = True
+            entity_weight[left_entity] = entity_weight[right_entity]
+        self.entity_embedding = nn.Parameter(entity_weight)
+        # nn.init.normal_(self.entity_embedding)
 
         self.relation_embedding = nn.Parameter(torch.zeros(nrelation, self.relation_dim))
         # nn.init.normal_(self.relation_embedding)
