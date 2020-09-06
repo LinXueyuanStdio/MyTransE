@@ -142,8 +142,8 @@ class run():
         for left_entity, right_entity in train_seeds:
             print("left_entity:", left_entity, "right_entity:", right_entity)
             model.entity_embedding[left_entity] = model.entity_embedding[right_entity]
-            left_entity_id = torch.LongTensor(left_entity).view(-1)
-            right_entity_id = torch.LongTensor(right_entity).view(-1)
+            left_entity_id = torch.LongTensor([left_entity]).view(-1)
+            right_entity_id = torch.LongTensor([right_entity]).view(-1)
             print("left_entity_id:", left_entity_id, "right_entity_id:", right_entity_id)
             left_entity_vec = torch.index_select(
                 model.entity_embedding,
