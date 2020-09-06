@@ -304,7 +304,7 @@ class run():
         # start training
         print("start training")
         init_step = 1
-        steps = 20001
+        steps = 50001
         printnum = 10000
         lastscore = 100
         progbar = Progbar(max_step=steps-init_step)
@@ -318,7 +318,7 @@ class run():
                 ("cost", round((Time.time() - starttime)))
             ])
             if step > init_step and step % printnum == 0:
-                print("属性消融实验")
+                print("\n属性消融实验")
                 left_vec = t.get_vec2(self.kge_model.entity_embedding, t.left)
                 right_vec = t.get_vec2(self.kge_model.entity_embedding, t.right)
                 hits = t.get_hits(left_vec, right_vec)
