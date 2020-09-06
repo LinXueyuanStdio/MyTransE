@@ -150,8 +150,6 @@ class Tester:
         with open(entity_align_file_path, encoding='utf-8') as f:
             for line in f:
                 th = line[:-1].split('\t')
-                self.left.append(int(th[0]))
-                self.right.append(int(th[1]))
                 ret.append((int(th[0]), int(th[1])))
             self.seeds = ret
         # 80%训练集，20%测试集
@@ -159,6 +157,9 @@ class Tester:
         train_max_idx = int(train_percent * len(self.seeds))
         self.train_seeds = self.seeds[:train_max_idx]
         self.test_seeds = self.seeds[train_max_idx + 1:]
+        for i in self.test_seeds:
+            self.left.append(i[0])  # 对齐的左边的实体
+            self.right.append(i[1])  # 对齐的右边的实体
 
     def XRA(self, entity_embedding_file_path):
         self.linkEmbedding = []
@@ -209,14 +210,14 @@ class Tester:
         left = []
         for i in range(len(top_lr)):
             hits = top_k[i]
-            hits_value = top_lr[i] / len(self.seeds) * 100
+            hits_value = top_lr[i] / len(self.test_seeds) * 100
             left.append((hits, hits_value))
             print('Hits@%d: %.2f%%' % (hits, hits_value))
         print('For each right:')
         right = []
         for i in range(len(top_rl)):
             hits = top_k[i]
-            hits_value = top_rl[i] / len(self.seeds) * 100
+            hits_value = top_rl[i] / len(self.test_seeds) * 100
             right.append((hits, hits_value))
             print('Hits@%d: %.2f%%' % (hits, hits_value))
 
