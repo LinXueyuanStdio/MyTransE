@@ -20,7 +20,7 @@ from dataloader import TestDataset
 
 
 class KGEModel(nn.Module):
-    def __init__(self, nentity, nrelation, nvalue, hidden_dim, gamma, double_entity_embedding=False,
+    def __init__(self,train_seeds, nentity, nrelation, nvalue, hidden_dim, gamma, double_entity_embedding=False,
                  double_relation_embedding=False):
         super(KGEModel, self).__init__()
         # self.model_name = model_name
@@ -50,6 +50,8 @@ class KGEModel(nn.Module):
             a=-self.embedding_range.item(),
             b=self.embedding_range.item()
         )
+        for left_entity, right_entity in train_seeds:
+            self.entity_embedding[left_entity] = self.entity_embedding[right_entity]
 
         self.relation_embedding = nn.Parameter(torch.zeros(nrelation, self.relation_dim))
         # nn.init.normal_(self.relation_embedding)

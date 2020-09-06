@@ -148,13 +148,14 @@ class run():
         self.nvalue = len(value2id)
 
         self.kge_model = KGEModel(
+            t.train_seeds,
             nentity=self.nentity,
             nrelation=self.nattribute,
             nvalue=self.nentity,
             hidden_dim=200,
             gamma=24.0,
         )
-        self.init_by_train_seeds(self.kge_model, t.train_seeds)
+        # self.init_by_train_seeds(self.kge_model, t.train_seeds)
         current_learning_rate = 0.001
 
         self.optimizer = torch.optim.Adam(
@@ -183,7 +184,6 @@ class run():
 
         if self.isCUDA == 1:
             self.kge_model = self.kge_model.cuda()
-            self.kge_model.entity_embedding.requires_grad = True
 
         # start training
         print("start training")
