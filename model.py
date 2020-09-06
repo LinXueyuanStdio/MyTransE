@@ -52,6 +52,7 @@ class KGEModel(nn.Module):
         )
         for left_entity, right_entity in train_seeds:
             self.entity_embedding[left_entity] = self.entity_embedding[right_entity]
+        self.entity_embedding.requires_grad = True
 
         self.relation_embedding = nn.Parameter(torch.zeros(nrelation, self.relation_dim))
         # nn.init.normal_(self.relation_embedding)
