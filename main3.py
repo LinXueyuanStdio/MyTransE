@@ -183,6 +183,7 @@ class run():
 
         if self.isCUDA == 1:
             self.kge_model = self.kge_model.cuda()
+            self.kge_model.entity_embedding.requires_grad = True
 
         # start training
         print("start training")
