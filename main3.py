@@ -151,7 +151,7 @@ class run():
             t.train_seeds,
             nentity=self.nentity,
             nrelation=self.nattribute,
-            nvalue=self.nentity,
+            nvalue=self.nvalue,
             hidden_dim=200,
             gamma=24.0,
         )
