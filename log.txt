@@ -1,0 +1,158 @@
+entity: 39654 attr: 10969 value: 410207
+start training
+step:0, cost time: 0.579, loss is 1.538266
+属性消融实验
+For each left:
+Hits@1: 0.03%
+Hits@10: 0.07%
+Hits@50: 0.33%
+Hits@100: 0.70%
+For each right:
+Hits@1: 0.01%
+Hits@10: 0.06%
+Hits@50: 0.34%
+Hits@100: 0.76%
+score= 0.33666666666666667
+step:1000, cost time: 195.05, loss is 1.717172
+属性消融实验
+For each left:
+Hits@1: 0.01%
+Hits@10: 0.08%
+Hits@50: 0.35%
+Hits@100: 0.63%
+For each right:
+Hits@1: 0.01%
+Hits@10: 0.07%
+Hits@50: 0.43%
+Hits@100: 0.79%
+score= 0.3866666666666667
+step:2000, cost time: 375.005, loss is 1.701699
+属性消融实验
+For each left:
+Hits@1: 0.01%
+Hits@10: 0.07%
+Hits@50: 0.29%
+Hits@100: 0.62%
+For each right:
+Hits@1: 0.00%
+Hits@10: 0.07%
+Hits@50: 0.43%
+Hits@100: 0.73%
+score= 0.3566666666666667
+step:3000, cost time: 556.933, loss is 0.386634
+属性消融实验
+For each left:
+Hits@1: 0.01%
+Hits@10: 0.08%
+Hits@50: 0.31%
+Hits@100: 0.72%
+For each right:
+Hits@1: 0.01%
+Hits@10: 0.07%
+Hits@50: 0.36%
+Hits@100: 0.72%
+score= 0.33666666666666667
+step:4000, cost time: 749.327, loss is 0.359239
+属性消融实验
+For each left:
+Hits@1: 0.00%
+Hits@10: 0.05%
+Hits@50: 0.31%
+Hits@100: 0.75%
+For each right:
+Hits@1: 0.01%
+Hits@10: 0.07%
+Hits@50: 0.37%
+Hits@100: 0.83%
+score= 0.3433333333333334
+step:5000, cost time: 952.698, loss is 0.198716
+属性消融实验
+For each left:
+Hits@1: 0.01%
+Hits@10: 0.08%
+Hits@50: 0.35%
+Hits@100: 0.63%
+For each right:
+Hits@1: 0.00%
+Hits@10: 0.07%
+Hits@50: 0.35%
+Hits@100: 0.75%
+score= 0.35
+step:6000, cost time: 1150.895, loss is 0.121964
+属性消融实验
+For each left:
+Hits@1: 0.01%
+Hits@10: 0.05%
+Hits@50: 0.35%
+Hits@100: 0.69%
+For each right:
+Hits@1: 0.00%
+Hits@10: 0.04%
+Hits@50: 0.45%
+Hits@100: 0.83%
+score= 0.4
+step:7000, cost time: 1347.771, loss is 0.075646
+属性消融实验
+For each left:
+Hits@1: 0.01%
+Hits@10: 0.11%
+Hits@50: 0.36%
+Hits@100: 0.71%
+For each right:
+Hits@1: 0.00%
+Hits@10: 0.06%
+Hits@50: 0.41%
+Hits@100: 0.81%
+score= 0.38666666666666666
+step:8000, cost time: 1549.895, loss is 0.055395
+属性消融实验
+For each left:
+Hits@1: 0.00%
+Hits@10: 0.06%
+Hits@50: 0.38%
+Hits@100: 0.73%
+For each right:
+Hits@1: 0.01%
+Hits@10: 0.07%
+Hits@50: 0.39%
+Hits@100: 0.71%
+score= 0.3833333333333333
+step:9000, cost time: 1751.989, loss is 0.038538
+属性消融实验
+For each left:
+Hits@1: 0.01%
+Hits@10: 0.07%
+Hits@50: 0.35%
+Hits@100: 0.79%
+For each right:
+Hits@1: 0.00%
+Hits@10: 0.05%
+Hits@50: 0.40%
+Hits@100: 0.80%
+score= 0.37333333333333335
+step:10000, cost time: 1946.345, loss is 0.028930
+属性消融实验
+For each left:
+Hits@1: 0.00%
+Hits@10: 0.06%
+Hits@50: 0.38%
+Hits@100: 0.71%
+For each right:
+Hits@1: 0.00%
+Hits@10: 0.07%
+Hits@50: 0.34%
+Hits@100: 0.80%
+score= 0.36
+step:11000, cost time: 2151.035, loss is 0.021973
+属性消融实验
+For each left:
+Hits@1: 0.01%
+Hits@10: 0.05%
+Hits@50: 0.32%
+Hits@100: 0.61%
+For each right:
+Hits@1: 0.00%
+Hits@10: 0.10%
+Hits@50: 0.35%
+Hits@100: 0.68%
+score= 0.33666666666666667
