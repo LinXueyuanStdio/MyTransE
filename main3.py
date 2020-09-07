@@ -390,10 +390,21 @@ for step in range(init_step, total_steps):
         left_vec = t.get_vec2(model.entity_embedding, t.left)
         right_vec = t.get_vec2(model.entity_embedding, t.right)
         hits = t.get_hits(left_vec, right_vec)
-        left_hits_10 = hits["left"][2][1]
-        right_hits_10 = hits["right"][2][1]
+        hits_left = hits["left"]
+        hits_right = hits["right"]
+        left_hits_10 = hits_left[2][1]
+        right_hits_10 = hits_left[2][1]
         score = (left_hits_10 + right_hits_10) / 2
         print("score=", score)
+        summary_writer.add_scalar(tag='Hits@1/left', scalar_value=hits_left[0][1], global_step=step)
+        summary_writer.add_scalar(tag='Hits@10/left', scalar_value=hits_left[1][1], global_step=step)
+        summary_writer.add_scalar(tag='Hits@50/left', scalar_value=hits_left[2][1], global_step=step)
+        summary_writer.add_scalar(tag='Hits@100/left', scalar_value=hits_left[3][1], global_step=step)
+
+        summary_writer.add_scalar(tag='Hits@1/right', scalar_value=hits_right[0][1], global_step=step)
+        summary_writer.add_scalar(tag='Hits@10/right', scalar_value=hits_right[1][1], global_step=step)
+        summary_writer.add_scalar(tag='Hits@50/right', scalar_value=hits_right[2][1], global_step=step)
+        summary_writer.add_scalar(tag='Hits@100/right', scalar_value=hits_right[3][1], global_step=step)
         if loss < last_loss:
             last_loss = loss
             save_checkpoint(model, optim, 1, step, score, loss, checkpoint_path)
