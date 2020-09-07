@@ -335,8 +335,8 @@ train_iterator = BidirectionalOneShotIterator(train_dataloader_head, train_datal
 # region 配置
 device = "cuda"
 tensorboard_log_dir = "./result/log/"
-checkpoint_path = "./result/fr_en/checkpoint.tar"
-embedding_path = "./result/fr_en/ATentsembed.txt"
+checkpoint_path = "./result/fr_en/TransE/checkpoint.tar"
+embedding_path = "./result/fr_en/TransE/ATentsembed.txt"
 
 learning_rate = 0.001
 # endregion
