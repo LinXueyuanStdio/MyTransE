@@ -183,16 +183,15 @@ class KGEModel(nn.Module):
         return score
 
     @staticmethod
-    def train_step(model, optimizer, train_iterator, isCUDA):
+    def train_step(model, optimizer, train_iterator, device="cuda"):
 
         model.train()
         optimizer.zero_grad()
         positive_sample, negative_sample, subsampling_weight, mode = next(train_iterator)
 
-        if isCUDA == 1:
-            positive_sample = positive_sample.cuda()
-            negative_sample = negative_sample.cuda()
-            subsampling_weight = subsampling_weight.cuda()
+        positive_sample = positive_sample.to(device)
+        negative_sample = negative_sample.to(device)
+        subsampling_weight = subsampling_weight.to(device)
 
         negative_score = model((positive_sample, negative_sample), mode=mode)
         negative_score = F.logsigmoid(-negative_score).mean(dim=1)
@@ -210,7 +209,7 @@ class KGEModel(nn.Module):
         return loss.item()
 
     @staticmethod
-    def test_step(model, test_triples, all_true_triples, nentity, nrelation, isCUDA):
+    def test_step(model, test_triples, all_true_triples, nentity, nrelation, device="cuda"):
 
         model.eval()
 
@@ -253,10 +252,9 @@ class KGEModel(nn.Module):
 
                 for positive_sample, negative_sample, filter_bias, mode in test_dataset:
 
-                    if isCUDA == 1:
-                        positive_sample = positive_sample.cuda()
-                        negative_sample = negative_sample.cuda()
-                        filter_bias = filter_bias.cuda()
+                    positive_sample = positive_sample.to(device)
+                    negative_sample = negative_sample.to(device)
+                    filter_bias = filter_bias.to(device)
 
                     batch_size = positive_sample.size(0)
 

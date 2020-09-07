@@ -1,26 +1,21 @@
-import argparse
-import json
-import logging
-import os
-import random
 import sys
 import time
-import time as Time
 from typing import List, Tuple
 
+from scipy import spatial
 import numpy as np
 import torch
-from scipy import spatial
-
-from utils import *
+from torch import nn
+from torch.optim import optimizer
+from torch.utils import tensorboard
 from torch.utils.data import DataLoader
 
+from dataloader import BidirectionalOneShotIterator
+from dataloader import TrainDataset
 from model import KGEModel
 
-from dataloader import TrainDataset
-from dataloader import BidirectionalOneShotIterator
 
-
+# region 进度条
 class Progbar(object):
     """
     Progbar class inspired by keras
@@ -134,6 +129,9 @@ class Progbar(object):
         self.last_step = curr_step
 
 
+# endregion
+
+# region 测试对齐实体
 class Tester:
     left: List[int] = []
     right: List[int] = []
@@ -171,12 +169,12 @@ class Tester:
             self.linkEmbedding.append(aline_list)
 
     @staticmethod
-    def get_vec(entities_embedding, id_list, device="cuda"):
+    def get_vec(entities_embedding, id_list: List[int], device="cuda"):
         tensor = torch.LongTensor(id_list).view(-1, 1).to(device)
         return entities_embedding(tensor).view(-1, 200).cpu().detach().numpy()
 
     @staticmethod
-    def get_vec2(entities_embedding, id_list, device="cuda"):
+    def get_vec2(entities_embedding, id_list: List[int], device="cuda"):
         all_entity_ids = torch.LongTensor(id_list).view(-1).to(device)
         all_entity_vec = torch.index_select(
             entities_embedding,
@@ -229,131 +227,175 @@ class Tester:
 
 t = Tester()
 t.read_entity_align_list('data/fr_en/ref_ent_ids')  # 得到已知对齐实体
+# endregion
+
+# region 保存与加载模型，恢复训练状态
+_MODEL_STATE_DICT = "model_state_dict"
+_OPTIMIZER_STATE_DICT = "optimizer_state_dict"
+_EPOCH = "epoch"
+_STEP = "step"
+_BEST_SCORE = "best_score"
+_LOSS = "loss"
 
 
-class run():
-    def __init__(self, isCUDA):
-        self.isCUDA = isCUDA
+def load_checkpoint(model: nn.Module, optim: optimizer.Optimizer,
+                    checkpoint_path="./result/fr_en/checkpoint.tar") -> Tuple[int, int, float, float]:
+    """Loads training checkpoint.
 
-    def save_model(self, model, optimizer):
-
-        save_path = "./result/fr_en/model.pth"
-        state = {'net': model.state_dict(), 'optimizer': optimizer.state_dict()}
-
-        torch.save(state, save_path)
-
-    def save_entitylist(self, model):
-        dir = "./result/fr_en/ATentsembed.txt"
-        entityVectorFile = open(dir, 'w')
-        temparray = model.entity_embedding.cpu().detach().numpy()
-
-        for i in range(len(temparray)):
-            entityVectorFile.write(
-                str(temparray[i].tolist()).replace('[', '').replace(']', '').replace(',', ' '))
-            entityVectorFile.write("\n")
-
-        entityVectorFile.close()
-
-    def init_by_train_seeds(self, model: KGEModel, train_seeds: List[Tuple[int, int]], device="cuda"):
-        for left_entity, right_entity in train_seeds:
-            model.entity_embedding[left_entity] = model.entity_embedding[right_entity]
-
-    def train(self, train_triples, entity2id, att2id, value2id):
-        self.nentity = len(entity2id)
-        self.nattribute = len(att2id)
-        self.nvalue = len(value2id)
-
-        self.kge_model = KGEModel(
-            t.train_seeds,
-            nentity=self.nentity,
-            nrelation=self.nattribute,
-            nvalue=self.nvalue,
-            hidden_dim=200,
-            gamma=24.0,
-        )
-        # self.init_by_train_seeds(self.kge_model, t.train_seeds)
-        current_learning_rate = 0.001
-
-        self.optimizer = torch.optim.Adam(
-            filter(lambda p: p.requires_grad, self.kge_model.parameters()),
-            lr=current_learning_rate
-        )
-
-        # self.optimizer = torch.optim.SGD(self.kge_model.parameters(), lr=current_learning_rate)
-
-        # Set training dataloader iterator
-        train_dataloader_head = DataLoader(
-            TrainDataset(train_triples, self.nentity, self.nattribute, self.nvalue, 256, 'head-batch'),
-            batch_size=1024,
-            shuffle=False,
-            num_workers=4,
-            collate_fn=TrainDataset.collate_fn
-        )
-        train_dataloader_tail = DataLoader(
-            TrainDataset(train_triples, self.nentity, self.nattribute, self.nvalue, 256, 'tail-batch'),
-            batch_size=1024,
-            shuffle=False,
-            num_workers=4,
-            collate_fn=TrainDataset.collate_fn
-        )
-        train_iterator = BidirectionalOneShotIterator(train_dataloader_head, train_dataloader_tail)
-
-        if self.isCUDA == 1:
-            self.kge_model = self.kge_model.cuda()
-
-        # start training
-        print("start training")
-        init_step = 1
-        steps = 500001
-        printnum = 10000
-        lastscore = 100
-        progbar = Progbar(max_step=steps-init_step)
-        # Training Loop
-        starttime = Time.time()
-        for step in range(init_step, steps):
-            loss = self.kge_model.train_step(self.kge_model, self.optimizer, train_iterator, self.isCUDA)
-            progbar.update(step-init_step, [
-                ("step", step-init_step),
-                ("loss", loss),
-                ("cost", round((Time.time() - starttime)))
-            ])
-            if step > init_step and step % printnum == 0:
-                print("\n属性消融实验")
-                left_vec = t.get_vec2(self.kge_model.entity_embedding, t.left)
-                right_vec = t.get_vec2(self.kge_model.entity_embedding, t.right)
-                hits = t.get_hits(left_vec, right_vec)
-                left_hits_10 = hits["left"][2][1]
-                right_hits_10 = hits["right"][2][1]
-                score = (left_hits_10 + right_hits_10) / 2
-                print("score=", score)
-                if loss < lastscore:
-                    lastscore = loss
-                    self.save_entitylist(self.kge_model)
-                    self.save_model(self.kge_model, self.optimizer)
+    :param checkpoint_path: path to checkpoint
+    :param model: model to update state
+    :param optim: optimizer to  update state
+    :return tuple of starting epoch id, starting step id, best checkpoint score
+    """
+    checkpoint = torch.load(checkpoint_path)
+    model.load_state_dict(checkpoint[_MODEL_STATE_DICT])
+    optim.load_state_dict(checkpoint[_OPTIMIZER_STATE_DICT])
+    start_epoch_id = checkpoint[_EPOCH] + 1
+    step = checkpoint[_STEP] + 1
+    best_score = checkpoint[_BEST_SCORE]
+    loss = checkpoint[_LOSS]
+    return start_epoch_id, step, best_score, loss
 
 
-def openDetailsAndId(dir, sp="\t"):
-    idNum = 0
-    list = []
-    with open(dir, encoding="utf-8") as file:
+def save_checkpoint(model: nn.Module, optim: optimizer.Optimizer,
+                    epoch_id: int, step: int, best_score: float, loss: float,
+                    save_path="./result/fr_en/checkpoint.tar"):
+    torch.save({
+        _MODEL_STATE_DICT: model.state_dict(),
+        _OPTIMIZER_STATE_DICT: optim.state_dict(),
+        _EPOCH: epoch_id,
+        _STEP: step,
+        _BEST_SCORE: best_score,
+        _LOSS: loss,
+    }, save_path)
+
+
+def save_entity_embedding_list(model, embedding_path="./result/fr_en/ATentsembed.txt"):
+    with open(embedding_path, 'w') as f:
+        d = model.entities_embedding.weight.data.detach().cpu().numpy()
+        for i in range(len(d)):
+            f.write(" ".join([str(j) for j in d[i].tolist()]))
+            f.write("\n")
+
+
+# endregion
+
+# region 数据集
+def read_ids_and_names(dir_path, sp="\t"):
+    ids = []
+    names = []
+    with open(dir_path, encoding="utf-8") as file:
         lines = file.readlines()
         for line in lines:
-            DetailsAndId = line.strip().split(sp)
-            list.append(int(DetailsAndId[0]))
-            idNum += 1
-    return idNum, list
+            id_to_name = line.strip().split(sp)
+            ids.append(int(id_to_name[0]))
+            names.append(id_to_name[1])
+    return ids, names
 
 
-if __name__ == '__main__':
-    print('initial')
-    train_SKG = load_static_graph('data/fr_en', 'att_triple_all', 0)
-    dirEntity = "data/fr_en/ent_ids_all"
-    entityIdNum, entityList = openDetailsAndId(dirEntity)
-    dirAttr = 'data/fr_en/att2id_all'
-    attrIdNum, attrList = openDetailsAndId(dirAttr)
-    dirValue = "data/fr_en/att_value2id_all"
-    valueIdNum, valueList = openDetailsAndId(dirValue)
-    print("entity:", entityIdNum, "attr:", attrIdNum, "value:", valueIdNum)
+def read_triple(triple_path):
+    with open(triple_path, 'r') as fr:
+        SKG = set()
+        for line in fr:
+            line_split = line.split()
+            head = int(line_split[0])
+            tail = int(line_split[1])
+            rel = int(line_split[2])
+            SKG.add((head, rel, tail))
+    return list(SKG)
 
-    Run = run(1)
-    Run.train(train_SKG, entityList, attrList, valueList)
+
+entity_list, entity_name_list = read_ids_and_names("data/fr_en/ent_ids_all")
+attr_list, _ = read_ids_and_names("data/fr_en/att2id_all")
+value_list, _ = read_ids_and_names("data/fr_en/att_value2id_all")
+train_triples = read_triple("data/fr_en/att_triple_all")
+
+entity_count = len(entity_list)
+attr_count = len(attr_list)
+value_count = len(value_list)
+print("entity:", entity_count, "attr:", attr_count, "value:", value_count)
+
+train_dataloader_head = DataLoader(
+    TrainDataset(train_triples, entity_count, attr_count, value_count, 512, 'head-batch'),
+    batch_size=1024,
+    shuffle=False,
+    num_workers=4,
+    collate_fn=TrainDataset.collate_fn
+)
+train_dataloader_tail = DataLoader(
+    TrainDataset(train_triples, entity_count, attr_count, value_count, 512, 'tail-batch'),
+    batch_size=1024,
+    shuffle=False,
+    num_workers=4,
+    collate_fn=TrainDataset.collate_fn
+)
+train_iterator = BidirectionalOneShotIterator(train_dataloader_head, train_dataloader_tail)
+# endregion
+
+# region 配置
+device = "cuda"
+tensorboard_log_dir = "./result/log/"
+checkpoint_path = "./result/fr_en/checkpoint.tar"
+embedding_path = "./result/fr_en/ATentsembed.txt"
+
+learning_rate = 0.001
+# endregion
+
+# region 模型和优化器
+model = KGEModel(
+    t.train_seeds,
+    nentity=entity_count,
+    nrelation=attr_count,
+    nvalue=value_count,
+    hidden_dim=200,
+    gamma=24.0,
+).to(device)
+
+optim = torch.optim.Adam(
+    filter(lambda p: p.requires_grad, model.parameters()),
+    lr=learning_rate
+)
+# endregion
+
+# region 可视化
+summary_writer = tensorboard.SummaryWriter(log_dir=tensorboard_log_dir)
+# endregion
+
+# region 开始训练
+print("start training")
+init_step = 1
+total_steps = 500001
+test_steps = 10000
+last_loss = 100
+need_to_load_checkpoint = False
+
+if need_to_load_checkpoint:
+    _, init_step, best_score, last_loss = load_checkpoint(model, optim, checkpoint_path)
+
+progbar = Progbar(max_step=total_steps - init_step)
+start_time = time.time()
+
+for step in range(init_step, total_steps):
+    loss = model.train_step(model, optim, train_iterator, device)
+    progbar.update(step - init_step, [
+        ("step", step - init_step),
+        ("loss", loss),
+        ("cost", round((time.time() - start_time)))
+    ])
+    summary_writer.add_scalar('Loss/train', loss, global_step=step)
+    summary_writer.add_embedding('Embedding', model.entity_embedding, metadata=entity_name_list, global_step=step)
+
+    if step > init_step and step % test_steps == 0:
+        print("\n属性消融实验")
+        left_vec = t.get_vec2(model.entity_embedding, t.left)
+        right_vec = t.get_vec2(model.entity_embedding, t.right)
+        hits = t.get_hits(left_vec, right_vec)
+        left_hits_10 = hits["left"][2][1]
+        right_hits_10 = hits["right"][2][1]
+        score = (left_hits_10 + right_hits_10) / 2
+        print("score=", score)
+        if loss < last_loss:
+            last_loss = loss
+            save_checkpoint(model, optim, 1, step, score, loss, checkpoint_path)
+            save_entity_embedding_list(model, embedding_path)
+# endregion
