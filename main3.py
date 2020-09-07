@@ -276,7 +276,7 @@ def save_checkpoint(model: nn.Module, optim: optimizer.Optimizer,
 
 def save_entity_embedding_list(model, embedding_path="./result/fr_en/ATentsembed.txt"):
     with open(embedding_path, 'w') as f:
-        d = model.entities_embedding.weight.data.detach().cpu().numpy()
+        d = model.entity_embedding.data.detach().cpu().numpy()
         for i in range(len(d)):
             f.write(" ".join([str(j) for j in d[i].tolist()]))
             f.write("\n")
@@ -371,10 +371,11 @@ init_step = 1
 total_steps = 500001
 test_steps = 10000
 last_loss = 100
-need_to_load_checkpoint = False
+score = 0
+need_to_load_checkpoint = True
 
 if need_to_load_checkpoint:
-    _, init_step, best_score, last_loss = load_checkpoint(model, optim, checkpoint_path)
+    _, init_step, score, last_loss = load_checkpoint(model, optim, checkpoint_path)
 
 progbar = Progbar(max_step=total_steps - init_step)
 start_time = time.time()
