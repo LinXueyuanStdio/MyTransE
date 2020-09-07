@@ -13,6 +13,10 @@ from torch.utils.data import DataLoader
 from dataloader import BidirectionalOneShotIterator
 from dataloader import TrainDataset
 from model import KGEModel
+import tensorflow as tf
+import tensorboard as tb
+
+tf.io.gfile = tb.compat.tensorflow_stub.io.gfile
 
 
 # region 进度条
@@ -383,7 +387,8 @@ for step in range(init_step, total_steps):
         ("cost", round((time.time() - start_time)))
     ])
     summary_writer.add_scalar(tag='Loss/train', scalar_value=loss, global_step=step)
-    summary_writer.add_embedding(tag='Embedding', mat=model.entity_embedding, metadata=entity_name_list, global_step=step)
+    summary_writer.add_embedding(tag='Embedding', mat=model.entity_embedding, metadata=entity_name_list,
+                                 global_step=step)
 
     if step > init_step and step % test_steps == 0:
         print("\n属性消融实验")
