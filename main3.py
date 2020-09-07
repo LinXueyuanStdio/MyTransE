@@ -304,7 +304,7 @@ class run():
         # start training
         print("start training")
         init_step = 1
-        steps = 50001
+        steps = 500001
         printnum = 10000
         lastscore = 100
         progbar = Progbar(max_step=steps-init_step)
