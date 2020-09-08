@@ -238,8 +238,6 @@ class Tester:
         }
 
 
-t = Tester()
-t.read_entity_align_list('data/fr_en/ref_ent_ids')  # 得到已知对齐实体
 # endregion
 
 # region 保存与加载模型，恢复训练状态
@@ -335,11 +333,13 @@ def append_align_triple(triple: List[Tuple[int, int, int]], entity_align_list: L
     return triple + triple_replace_with_align
 
 
+t = Tester()
+t.read_entity_align_list('data/fr_en/ref_ent_ids')  # 得到已知对齐实体
 entity_list, entity_name_list = read_ids_and_names("data/fr_en/ent_ids_all")
 attr_list, _ = read_ids_and_names("data/fr_en/att2id_all")
 value_list, _ = read_ids_and_names("data/fr_en/att_value2id_all")
 train_triples = read_triple("data/fr_en/att_triple_all")
-# train_triples = append_align_triple(train_triples, t.train_seeds)
+train_triples = append_align_triple(train_triples, t.train_seeds)
 
 entity_count = len(entity_list)
 attr_count = len(attr_list)
@@ -365,9 +365,9 @@ train_iterator = BidirectionalOneShotIterator(train_dataloader_head, train_datal
 
 # region 配置
 device = "cuda"
-tensorboard_log_dir = "./result/log/"
-checkpoint_path = "./result/fr_en/TransE/checkpoint.tar"
-embedding_path = "./result/fr_en/TransE/ATentsembed.txt"
+tensorboard_log_dir = "./result/TransE/log/"
+checkpoint_path = "./result/TransE/fr_en/checkpoint.tar"
+embedding_path = "./result/TransE/fr_en/TransE/ATentsembed.txt"
 
 learning_rate = 0.001
 # endregion
@@ -399,10 +399,12 @@ total_steps = 500001
 test_steps = 10000
 last_loss = 100
 score = 0
-need_to_load_checkpoint = True
+last_score = score
+need_to_load_checkpoint = False
 
 if need_to_load_checkpoint:
     _, init_step, score, last_loss = load_checkpoint(model, optim, checkpoint_path)
+    last_score = score
 
 progbar = Progbar(max_step=total_steps - init_step)
 start_time = time.time()
@@ -438,8 +440,8 @@ for step in range(init_step, total_steps):
         summary_writer.add_scalar(tag='Hits@10/right', scalar_value=hits_right[1][1], global_step=step)
         summary_writer.add_scalar(tag='Hits@50/right', scalar_value=hits_right[2][1], global_step=step)
         summary_writer.add_scalar(tag='Hits@100/right', scalar_value=hits_right[3][1], global_step=step)
-        if loss < last_loss:
-            last_loss = loss
+        if score > last_score:
+            last_score = score
             save_checkpoint(model, optim, 1, step, score, loss, checkpoint_path)
             save_entity_embedding_list(model, embedding_path)
 # endregion
