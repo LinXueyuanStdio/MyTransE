@@ -322,6 +322,7 @@ def append_align_triple(triple: List[Tuple[int, int, int]], entity_align_list: L
     align_set = {}
     for i in entity_align_list:
         align_set[i[0]] = i[1]
+        align_set[i[1]] = i[0]
     triple_replace_with_align = []
     bar = Progbar(max_step=len(triple))
     count = 0
