@@ -137,15 +137,15 @@ class Progbar(object):
 
 # region 测试对齐实体
 class Tester:
-    left: List[int] = []
-    right: List[int] = []
-    seeds: List[Tuple[int, int]] = []
+    left_ids: List[int] = []  # test_seeds 中对齐实体的左实体id
+    right_ids: List[int] = []  # test_seeds 中对齐实体的右实体id
+    seeds: List[Tuple[int, int]] = []  # (m, 2) 对齐的实体对(a,b)称a为左实体，b为右实体
+    train_seeds: List[Tuple[int, int]] = []  # (0.8m, 2)
+    test_seeds: List[Tuple[int, int]] = []  # (0.2m, 2)
     linkEmbedding = []
     kg1E = []
     kg2E = []
     EA_results = {}
-    train_seeds: List[Tuple[int, int]] = []
-    test_seeds: List[Tuple[int, int]] = []
 
     def read_entity_align_list(self, entity_align_file_path):
         ret = []
@@ -160,8 +160,8 @@ class Tester:
         self.train_seeds = self.seeds[:train_max_idx]
         self.test_seeds = self.seeds[train_max_idx + 1:]
         for i in self.test_seeds:
-            self.left.append(i[0])  # 对齐的左边的实体
-            self.right.append(i[1])  # 对齐的右边的实体
+            self.left_ids.append(i[0])  # 对齐的左边的实体
+            self.right_ids.append(i[1])  # 对齐的右边的实体
 
     def XRA(self, entity_embedding_file_path):
         self.linkEmbedding = []
@@ -194,12 +194,20 @@ class Tester:
 
     def get_hits(self, Lvec, Rvec, top_k=(1, 10, 50, 100)):
         sim = spatial.distance.cdist(Lvec, Rvec, metric='cityblock')
+        # Lvec (m, d), Rvec (m, d)
+        # Lvec和Rvec分别是对齐的左右实体的嵌入组成的列表，d是嵌入维度，m是实体个数
+        # sim=distance(Lvec, Rvec) (m, m)
+        # sim[i, j] 表示在 Lvec 的实体 i 到 Rvec 的实体 j 的距离
         top_lr = [0] * len(top_k)
         for i in range(Lvec.shape[0]):  # 对于每个KG1实体
             rank = sim[i, :].argsort()
+            # sim[i, :] 是一个行向量，表示将 Lvec 中的实体 i 到 Rvec 的所有实体的距离
+            # argsort 表示将距离按大小排序，返回排序后的下标。比如[6,3,5]下标[0,1,2]，排序后[3,5,6]，则返回[1,2,0]
             rank_index = np.where(rank == i)[0][0]
+            # 对于一维向量，np.where(rank == i) 等价于 list(rank).index(i)，即查找元素 i 在 rank 中的下标
+            # 这里的 i 不是代表 Lvec 中的实体 i 的下标，而是代表 Rvec 中和 i 对齐的实体的下标。
             for j in range(len(top_k)):
-                if rank_index < top_k[j]:
+                if rank_index < top_k[j]:  # index 从 0 开始，因此用 '<' 号
                     top_lr[j] += 1
         top_rl = [0] * len(top_k)
         for i in range(Rvec.shape[0]):
@@ -309,10 +317,21 @@ def read_triple(triple_path):
     return list(SKG)
 
 
+def append_align_triple(triple: List[Tuple[int, int, int]], entity_align_list: List[Tuple[int, int]]):
+    # 使用对齐实体替换头节点，构造属性三元组数据，从而达到利用对齐实体数据的目的
+    triple_replace_with_align = []
+    for i in entity_align_list:
+        for j in triple:
+            if j[0] == i:
+                triple_replace_with_align.append((j[1], i[1], i[2]))
+    return triple + triple_replace_with_align
+
+
 entity_list, entity_name_list = read_ids_and_names("data/fr_en/ent_ids_all")
 attr_list, _ = read_ids_and_names("data/fr_en/att2id_all")
 value_list, _ = read_ids_and_names("data/fr_en/att_value2id_all")
 train_triples = read_triple("data/fr_en/att_triple_all")
+train_triples = append_align_triple(train_triples, t.train_seeds)
 
 entity_count = len(entity_list)
 attr_count = len(attr_list)
@@ -391,8 +410,8 @@ for step in range(init_step, total_steps):
 
     if step > init_step and step % test_steps == 0:
         print("\n属性消融实验")
-        left_vec = t.get_vec2(model.entity_embedding, t.left)
-        right_vec = t.get_vec2(model.entity_embedding, t.right)
+        left_vec = t.get_vec2(model.entity_embedding, t.left_ids)
+        right_vec = t.get_vec2(model.entity_embedding, t.right_ids)
         hits = t.get_hits(left_vec, right_vec)
         hits_left = hits["left"]
         hits_right = hits["right"]
