@@ -400,7 +400,7 @@ test_steps = 10000
 last_loss = 100
 score = 0
 last_score = score
-need_to_load_checkpoint = False
+need_to_load_checkpoint = True
 
 if need_to_load_checkpoint:
     _, init_step, score, last_loss = load_checkpoint(model, optim, checkpoint_path)
