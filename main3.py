@@ -319,11 +319,17 @@ def read_triple(triple_path):
 
 def append_align_triple(triple: List[Tuple[int, int, int]], entity_align_list: List[Tuple[int, int]]):
     # 使用对齐实体替换头节点，构造属性三元组数据，从而达到利用对齐实体数据的目的
-    triple_replace_with_align = []
+    align_set = {}
     for i in entity_align_list:
-        for j in triple:
-            if j[0] == i:
-                triple_replace_with_align.append((j[1], i[1], i[2]))
+        align_set[i[0]] = i[1]
+    triple_replace_with_align = []
+    bar = Progbar(max_step=len(triple))
+    count = 0
+    for entity, attr, value in triple:
+        if entity in align_set:
+            triple_replace_with_align.append((align_set[entity], attr, value))
+        count += 1
+        bar.update(count, [("step", count)])
     return triple + triple_replace_with_align
 
 
