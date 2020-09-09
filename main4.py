@@ -337,17 +337,18 @@ def append_align_triple(triple: List[Tuple[int, int, int]], entity_align_list: L
 
 class TransE:
     def __init__(self,
+                 # input paths
                  entity_align_file="data/fr_en/ref_ent_ids",
                  all_entity_file="data/fr_en/ent_ids_all",
                  all_attr_file="data/fr_en/att2id_all",
                  all_value_file="data/fr_en/att_value2id_all",
                  all_triple_file="data/fr_en/att_triple_all",
-
-                 device="cuda",
-                 tensorboard_log_dir="./result/TransE/log/",
+                 # output paths
                  checkpoint_path="./result/TransE/fr_en/checkpoint.tar",
                  embedding_path="./result/TransE/fr_en/ATentsembed.txt",
+                 tensorboard_log_dir="./result/TransE/fr_en/log/",
 
+                 device="cuda",
                  learning_rate=0.001
                  ):
         self.entity_align_file = entity_align_file
@@ -482,8 +483,44 @@ class TransE:
         print("score =", score)
 
 
-def train_model():
+def train_model_for_fr_en():
     m = TransE()
+    m.init_data()
+    m.append_align_triple()
+    m.init_dataset()
+    m.init_model()
+    m.init_optimizer()
+    m.run_train()
+
+
+def train_model_for_ja_en():
+    m = TransE(entity_align_file="data/ja_en/ref_ent_ids",
+               all_entity_file="data/ja_en/ent_ids_all",
+               all_attr_file="data/ja_en/att2id_all",
+               all_value_file="data/ja_en/att_value2id_all",
+               all_triple_file="data/ja_en/att_triple_all",
+
+               checkpoint_path="./result/TransE/ja_en/checkpoint.tar",
+               embedding_path="./result/TransE/ja_en/ATentsembed.txt",
+               tensorboard_log_dir="./result/TransE/ja_en/log/")
+    m.init_data()
+    m.append_align_triple()
+    m.init_dataset()
+    m.init_model()
+    m.init_optimizer()
+    m.run_train()
+
+
+def train_model_for_zh_en():
+    m = TransE(entity_align_file="data/zh_en/ref_ent_ids",
+               all_entity_file="data/zh_en/ent_ids_all",
+               all_attr_file="data/zh_en/att2id_all",
+               all_value_file="data/zh_en/att_value2id_all",
+               all_triple_file="data/zh_en/att_triple_all",
+
+               checkpoint_path="./result/TransE/zh_en/checkpoint.tar",
+               embedding_path="./result/TransE/zh_en/ATentsembed.txt",
+               tensorboard_log_dir="./result/TransE/zh_en/log/")
     m.init_data()
     m.append_align_triple()
     m.init_dataset()

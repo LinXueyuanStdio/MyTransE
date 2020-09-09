@@ -253,7 +253,7 @@ def openDetailsAndId(dir, sp="\t"):
 
 if __name__ == '__main__':
     print('initial')
-    train_SKG = load_static_graph('data/fr_en', 'triples_all', 0)
+    train_SKG = load_static_graph('data/fr_en', 'att_triples_all', 0)
     dirEntity = "data/fr_en/ent_ids_all"
     entityIdNum, entityList = openDetailsAndId(dirEntity)
     dirAttr = 'data/fr_en/att2id_all'
