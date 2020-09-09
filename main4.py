@@ -306,14 +306,14 @@ def read_ids_and_names(dir_path, sp="\t"):
 
 def read_triple(triple_path):
     with open(triple_path, 'r') as fr:
-        SKG = set()
+        triple = set()
         for line in fr:
             line_split = line.split()
             head = int(line_split[0])
             tail = int(line_split[1])
             rel = int(line_split[2])
-            SKG.add((head, rel, tail))
-    return list(SKG)
+            triple.add((head, rel, tail))
+    return list(triple)
 
 
 def append_align_triple(triple: List[Tuple[int, int, int]], entity_align_list: List[Tuple[int, int]]):
@@ -333,115 +333,170 @@ def append_align_triple(triple: List[Tuple[int, int, int]], entity_align_list: L
     return triple + triple_replace_with_align
 
 
-t = Tester()
-t.read_entity_align_list('data/fr_en/ref_ent_ids')  # 得到已知对齐实体
-entity_list, entity_name_list = read_ids_and_names("data/fr_en/ent_ids_all")
-attr_list, _ = read_ids_and_names("data/fr_en/att2id_all")
-value_list, _ = read_ids_and_names("data/fr_en/att_value2id_all")
-train_triples = read_triple("data/fr_en/att_triple_all")
-train_triples = append_align_triple(train_triples, t.train_seeds)
-
-entity_count = len(entity_list)
-attr_count = len(attr_list)
-value_count = len(value_list)
-print("entity:", entity_count, "attr:", attr_count, "value:", value_count)
-
-train_dataloader_head = DataLoader(
-    TrainDataset(train_triples, entity_count, attr_count, value_count, 512, 'head-batch'),
-    batch_size=1024,
-    shuffle=False,
-    num_workers=4,
-    collate_fn=TrainDataset.collate_fn
-)
-train_dataloader_tail = DataLoader(
-    TrainDataset(train_triples, entity_count, attr_count, value_count, 512, 'tail-batch'),
-    batch_size=1024,
-    shuffle=False,
-    num_workers=4,
-    collate_fn=TrainDataset.collate_fn
-)
-train_iterator = BidirectionalOneShotIterator(train_dataloader_head, train_dataloader_tail)
 # endregion
 
-# region 配置
-device = "cuda"
-tensorboard_log_dir = "./result/TransE/log/"
-checkpoint_path = "./result/TransE/fr_en/checkpoint.tar"
-embedding_path = "./result/TransE/fr_en/ATentsembed.txt"
+class TransE:
+    def __init__(self,
+                 entity_align_file="data/fr_en/ref_ent_ids",
+                 all_entity_file="data/fr_en/ent_ids_all",
+                 all_attr_file="data/fr_en/att2id_all",
+                 all_value_file="data/fr_en/att_value2id_all",
+                 all_triple_file="data/fr_en/att_triple_all",
 
-learning_rate = 0.001
-# endregion
+                 device="cuda",
+                 tensorboard_log_dir="./result/TransE/log/",
+                 checkpoint_path="./result/TransE/fr_en/checkpoint.tar",
+                 embedding_path="./result/TransE/fr_en/ATentsembed.txt",
 
-# region 模型和优化器
-model = KGEModel(
-    t.train_seeds,
-    nentity=entity_count,
-    nrelation=attr_count,
-    nvalue=value_count,
-    hidden_dim=200,
-    gamma=24.0,
-).to(device)
+                 learning_rate=0.001
+                 ):
+        self.entity_align_file = entity_align_file
+        self.all_entity_file = all_entity_file
+        self.all_attr_file = all_attr_file
+        self.all_value_file = all_value_file
+        self.all_triple_file = all_triple_file
+        self.device = device
+        self.tensorboard_log_dir = tensorboard_log_dir
+        self.checkpoint_path = checkpoint_path
+        self.embedding_path = embedding_path
 
-optim = torch.optim.Adam(
-    filter(lambda p: p.requires_grad, model.parameters()),
-    lr=learning_rate
-)
-# endregion
+        self.learning_rate = learning_rate
 
-# region 可视化
-summary_writer = tensorboard.SummaryWriter(log_dir=tensorboard_log_dir)
-# endregion
+    def init_data(self):
+        self.t = Tester()
+        self.t.read_entity_align_list(self.entity_align_file)  # 得到已知对齐实体
+        self.entity_list, self.entity_name_list = read_ids_and_names(self.all_entity_file)
+        self.attr_list, _ = read_ids_and_names(self.all_attr_file)
+        self.value_list, _ = read_ids_and_names(self.all_value_file)
+        self.train_triples = read_triple(self.all_triple_file)
 
-# region 开始训练
-print("start training")
-init_step = 1
-total_steps = 500001
-test_steps = 10000
-last_loss = 100
-score = 0
-last_score = score
-need_to_load_checkpoint = True
+        self.entity_count = len(self.entity_list)
+        self.attr_count = len(self.attr_list)
+        self.value_count = len(self.value_list)
 
-if need_to_load_checkpoint:
-    _, init_step, score, last_loss = load_checkpoint(model, optim, checkpoint_path)
-    last_score = score
+        print("entity:", self.entity_count, "attr:", self.attr_count, "value:", self.value_count)
 
-progbar = Progbar(max_step=total_steps - init_step)
-start_time = time.time()
+    def append_align_triple(self):
+        self.train_triples = append_align_triple(self.train_triples, self.t.train_seeds)
 
-for step in range(init_step, total_steps):
-    loss = model.train_step(model, optim, train_iterator, device)
-    progbar.update(step - init_step, [
-        ("step", step - init_step),
-        ("loss", loss),
-        ("cost", round((time.time() - start_time)))
-    ])
-    summary_writer.add_scalar(tag='Loss/train', scalar_value=loss, global_step=step)
+    def init_dataset(self):
+        train_dataloader_head = DataLoader(
+            TrainDataset(self.train_triples, self.entity_count, self.attr_count, self.value_count, 512, 'head-batch'),
+            batch_size=1024,
+            shuffle=False,
+            num_workers=4,
+            collate_fn=TrainDataset.collate_fn
+        )
+        train_dataloader_tail = DataLoader(
+            TrainDataset(self.train_triples, self.entity_count, self.attr_count, self.value_count, 512, 'tail-batch'),
+            batch_size=1024,
+            shuffle=False,
+            num_workers=4,
+            collate_fn=TrainDataset.collate_fn
+        )
+        self.train_iterator = BidirectionalOneShotIterator(train_dataloader_head, train_dataloader_tail)
 
-    if step > init_step and step % test_steps == 0:
+    def init_model(self):
+        self.model = KGEModel(
+            self.t.train_seeds,
+            nentity=self.entity_count,
+            nrelation=self.attr_count,
+            nvalue=self.value_count,
+            hidden_dim=200,
+            gamma=24.0,
+        ).to(self.device)
+
+    def init_optimizer(self):
+        self.optim = torch.optim.Adam(
+            filter(lambda p: p.requires_grad, self.model.parameters()),
+            lr=self.learning_rate
+        )
+
+    def run_train(self):
+        print("start training")
+        init_step = 1
+        total_steps = 500001
+        test_steps = 10000
+        last_loss = 100
+        score = 0
+        last_score = score
+        need_to_load_checkpoint = True
+
+        if need_to_load_checkpoint:
+            _, init_step, score, last_loss = load_checkpoint(self.model, self.optim, self.checkpoint_path)
+            last_score = score
+
+        summary_writer = tensorboard.SummaryWriter(log_dir=self.tensorboard_log_dir)
+        progbar = Progbar(max_step=total_steps - init_step)
+        start_time = time.time()
+
+        for step in range(init_step, total_steps):
+            loss = self.model.train_step(self.model, self.optim, self.train_iterator, self.device)
+            progbar.update(step - init_step, [
+                ("step", step - init_step),
+                ("loss", loss),
+                ("cost", round((time.time() - start_time)))
+            ])
+            summary_writer.add_scalar(tag='Loss/train', scalar_value=loss, global_step=step)
+
+            if step > init_step and step % test_steps == 0:
+                print("\n属性消融实验")
+                left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
+                right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
+                hits = self.t.get_hits(left_vec, right_vec)
+                hits_left = hits["left"]
+                hits_right = hits["right"]
+                left_hits_10 = hits_left[2][1]
+                right_hits_10 = hits_right[2][1]
+                score = (left_hits_10 + right_hits_10) / 2
+                print("score =", score)
+                summary_writer.add_embedding(tag='Embedding',
+                                             mat=self.model.entity_embedding,
+                                             metadata=self.entity_name_list,
+                                             global_step=step)
+                summary_writer.add_scalar(tag='Hits@1/left', scalar_value=hits_left[0][1], global_step=step)
+                summary_writer.add_scalar(tag='Hits@10/left', scalar_value=hits_left[1][1], global_step=step)
+                summary_writer.add_scalar(tag='Hits@50/left', scalar_value=hits_left[2][1], global_step=step)
+                summary_writer.add_scalar(tag='Hits@100/left', scalar_value=hits_left[3][1], global_step=step)
+
+                summary_writer.add_scalar(tag='Hits@1/right', scalar_value=hits_right[0][1], global_step=step)
+                summary_writer.add_scalar(tag='Hits@10/right', scalar_value=hits_right[1][1], global_step=step)
+                summary_writer.add_scalar(tag='Hits@50/right', scalar_value=hits_right[2][1], global_step=step)
+                summary_writer.add_scalar(tag='Hits@100/right', scalar_value=hits_right[3][1], global_step=step)
+                if score > last_score:
+                    last_score = score
+                    save_checkpoint(self.model, self.optim, 1, step, score, loss, self.checkpoint_path)
+                    save_entity_embedding_list(self.model, self.embedding_path)
+
+    def run_test(self):
+        load_checkpoint(self.model, self.optim, self.checkpoint_path)
         print("\n属性消融实验")
-        left_vec = t.get_vec2(model.entity_embedding, t.left_ids)
-        right_vec = t.get_vec2(model.entity_embedding, t.right_ids)
-        hits = t.get_hits(left_vec, right_vec)
+        left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
+        right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
+        hits = self.t.get_hits(left_vec, right_vec)
         hits_left = hits["left"]
         hits_right = hits["right"]
         left_hits_10 = hits_left[2][1]
-        right_hits_10 = hits_left[2][1]
+        right_hits_10 = hits_right[2][1]
         score = (left_hits_10 + right_hits_10) / 2
-        print("score=", score)
-        summary_writer.add_embedding(tag='Embedding', mat=model.entity_embedding, metadata=entity_name_list,
-                                     global_step=step)
-        summary_writer.add_scalar(tag='Hits@1/left', scalar_value=hits_left[0][1], global_step=step)
-        summary_writer.add_scalar(tag='Hits@10/left', scalar_value=hits_left[1][1], global_step=step)
-        summary_writer.add_scalar(tag='Hits@50/left', scalar_value=hits_left[2][1], global_step=step)
-        summary_writer.add_scalar(tag='Hits@100/left', scalar_value=hits_left[3][1], global_step=step)
+        print("score =", score)
 
-        summary_writer.add_scalar(tag='Hits@1/right', scalar_value=hits_right[0][1], global_step=step)
-        summary_writer.add_scalar(tag='Hits@10/right', scalar_value=hits_right[1][1], global_step=step)
-        summary_writer.add_scalar(tag='Hits@50/right', scalar_value=hits_right[2][1], global_step=step)
-        summary_writer.add_scalar(tag='Hits@100/right', scalar_value=hits_right[3][1], global_step=step)
-        if score > last_score:
-            last_score = score
-            save_checkpoint(model, optim, 1, step, score, loss, checkpoint_path)
-            save_entity_embedding_list(model, embedding_path)
-# endregion
+
+def train_model():
+    m = TransE()
+    m.init_data()
+    m.append_align_triple()
+    m.init_dataset()
+    m.init_model()
+    m.init_optimizer()
+    m.run_train()
+
+
+def test_model():
+    m = TransE()
+    m.init_data()
+    m.init_model()
+    m.init_optimizer()
+    m.run_test()
+
+test_model()

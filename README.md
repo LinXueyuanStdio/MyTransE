@@ -4,6 +4,11 @@
 
 ## 说明
 
+python3.7
+torch                  1.6.0+cu101
+tensorboard            2.2.2
+tensorflow-gpu         2.2.0
+
 - main.py 是参考 RotatE 的 TransE 实现，仅在测试时用到对齐数据。
 - main2.py 是我根据TransE原始论文另一个实现，用于验证模型有效性。
 - main3.py 是在 main.py 的基础上，将对齐数据划分80%用于初始化，20%用于测试。
