@@ -537,4 +537,5 @@ def test_model():
     m.run_test()
 
 
-test_model()
+train_model_for_ja_en()
+train_model_for_zh_en()
