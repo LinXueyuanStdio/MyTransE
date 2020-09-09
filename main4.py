@@ -413,7 +413,7 @@ class TransE:
             lr=self.learning_rate
         )
 
-    def run_train(self):
+    def run_train(self, need_to_load_checkpoint=True):
         print("start training")
         init_step = 1
         total_steps = 500001
@@ -421,7 +421,6 @@ class TransE:
         last_loss = 100
         score = 0
         last_score = score
-        need_to_load_checkpoint = True
 
         if need_to_load_checkpoint:
             _, init_step, score, last_loss = load_checkpoint(self.model, self.optim, self.checkpoint_path)
@@ -508,7 +507,7 @@ def train_model_for_ja_en():
     m.init_dataset()
     m.init_model()
     m.init_optimizer()
-    m.run_train()
+    m.run_train(need_to_load_checkpoint=False)
 
 
 def train_model_for_zh_en():
@@ -526,7 +525,7 @@ def train_model_for_zh_en():
     m.init_dataset()
     m.init_model()
     m.init_optimizer()
-    m.run_train()
+    m.run_train(need_to_load_checkpoint=False)
 
 
 def test_model():
