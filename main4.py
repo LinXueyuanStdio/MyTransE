@@ -160,9 +160,11 @@ class Tester:
         train_max_idx = int(train_percent * len(self.seeds))
         self.train_seeds = self.seeds[:train_max_idx]
         self.test_seeds = self.seeds[train_max_idx + 1:]
-        for i in self.test_seeds:
-            self.left_ids.append(i[0])  # 对齐的左边的实体
-            self.right_ids.append(i[1])  # 对齐的右边的实体
+        self.left_ids = []
+        self.right_ids = []
+        for left_entity, right_entity in self.test_seeds:
+            self.left_ids.append(left_entity)  # 对齐的左边的实体
+            self.right_ids.append(right_entity)  # 对齐的右边的实体
 
     def XRA(self, entity_embedding_file_path):
         self.linkEmbedding = []
