@@ -1,0 +1,4 @@
+torch==1.6.0+cu101
+tensorboard==2.2.2
+tensorflow-gpu==2.2.0
+logging

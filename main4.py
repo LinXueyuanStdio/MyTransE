@@ -15,10 +15,35 @@ from dataloader import TrainDataset
 from model import KGEModel
 import tensorflow as tf
 import tensorboard as tb
+import logging
 
 tf.io.gfile = tb.compat.tensorflow_stub.io.gfile
 torch.random.manual_seed(123456)
 
+
+# region 日志
+def get_logger(filename):
+    """
+    Return instance of logger
+    统一的日志样式
+    """
+    logger = logging.getLogger('logger')
+    logger.setLevel(logging.INFO)
+    logging.basicConfig(format='%(message)s', level=logging.INFO)
+
+    handler = logging.FileHandler(filename)
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(message)s'))
+
+    logging.getLogger().addHandler(handler)
+
+    return logger
+
+
+logger = get_logger("./train.log")
+
+
+# endregion
 
 # region 进度条
 class Progbar(object):
@@ -219,20 +244,20 @@ class Tester:
             for j in range(len(top_k)):
                 if rank_index < top_k[j]:
                     top_rl[j] += 1
-        print('For each left:')
+        logger.info('For each left:')
         left = []
         for i in range(len(top_lr)):
             hits = top_k[i]
             hits_value = top_lr[i] / len(self.test_seeds) * 100
             left.append((hits, hits_value))
-            print('Hits@%d: %.2f%%' % (hits, hits_value))
-        print('For each right:')
+            logger.info('Hits@%d: %.2f%%' % (hits, hits_value))
+        logger.info('For each right:')
         right = []
         for i in range(len(top_rl)):
             hits = top_k[i]
             hits_value = top_rl[i] / len(self.test_seeds) * 100
             right.append((hits, hits_value))
-            print('Hits@%d: %.2f%%' % (hits, hits_value))
+            logger.info('Hits@%d: %.2f%%' % (hits, hits_value))
 
         return {
             "left": left,
@@ -377,7 +402,7 @@ class TransE:
         self.attr_count = len(self.attr_list)
         self.value_count = len(self.value_list)
 
-        print("entity:", self.entity_count, "attr:", self.attr_count, "value:", self.value_count)
+        logger.info("entity:", self.entity_count, "attr:", self.attr_count, "value:", self.value_count)
 
     def append_align_triple(self):
         self.train_triples = append_align_triple(self.train_triples, self.t.train_seeds)
@@ -416,7 +441,7 @@ class TransE:
         )
 
     def run_train(self, need_to_load_checkpoint=True):
-        print("start training")
+        logger.info("start training")
         init_step = 1
         total_steps = 500001
         test_steps = 10000
@@ -442,7 +467,7 @@ class TransE:
             summary_writer.add_scalar(tag='Loss/train', scalar_value=loss, global_step=step)
 
             if step > init_step and step % test_steps == 0:
-                print("\n属性消融实验")
+                logger.info("\n属性消融实验")
                 left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
                 right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
                 hits = self.t.get_hits(left_vec, right_vec)
@@ -451,7 +476,7 @@ class TransE:
                 left_hits_10 = hits_left[2][1]
                 right_hits_10 = hits_right[2][1]
                 score = (left_hits_10 + right_hits_10) / 2
-                print("score =", score)
+                logger.info("score =", score)
                 summary_writer.add_embedding(tag='Embedding',
                                              mat=self.model.entity_embedding,
                                              metadata=self.entity_name_list,
@@ -472,7 +497,7 @@ class TransE:
 
     def run_test(self):
         load_checkpoint(self.model, self.optim, self.checkpoint_path)
-        print("\n属性消融实验")
+        logger.info("\n属性消融实验")
         left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
         right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
         hits = self.t.get_hits(left_vec, right_vec)
@@ -481,7 +506,7 @@ class TransE:
         left_hits_10 = hits_left[2][1]
         right_hits_10 = hits_right[2][1]
         score = (left_hits_10 + right_hits_10) / 2
-        print("score =", score)
+        logger.info("score =", score)
 
 
 def train_model_for_fr_en():
