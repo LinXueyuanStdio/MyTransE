@@ -403,7 +403,7 @@ class TransE:
         self.value_count = len(self.value_list)
 
         logger.info(
-            "entity:" + str(self.entity_count) + "attr:" + str(self.attr_count) + "value:" + str(self.value_count))
+            "entity: " + str(self.entity_count) + " attr: " + str(self.attr_count) + " value: " + str(self.value_count))
 
     def append_align_triple(self):
         self.train_triples = append_align_triple(self.train_triples, self.t.train_seeds)
@@ -477,7 +477,7 @@ class TransE:
                 left_hits_10 = hits_left[2][1]
                 right_hits_10 = hits_right[2][1]
                 score = (left_hits_10 + right_hits_10) / 2
-                logger.info("score =", score)
+                logger.info("score = " + str(score))
                 summary_writer.add_embedding(tag='Embedding',
                                              mat=self.model.entity_embedding,
                                              metadata=self.entity_name_list,
@@ -507,7 +507,7 @@ class TransE:
         left_hits_10 = hits_left[2][1]
         right_hits_10 = hits_right[2][1]
         score = (left_hits_10 + right_hits_10) / 2
-        logger.info("score =", score)
+        logger.info("score = "+ str(score))
 
 
 def train_model_for_fr_en():
