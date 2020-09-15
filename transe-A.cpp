@@ -430,9 +430,10 @@ void* transetrainMode(void *con)
         norm(entityVec + dimension * aTrainList[i].h);
         norm(valueVec + dimension * aTrainList[i].t);
 
-        if(float(randd(id)%1000)/1000.0 < combinationProbability[h1])
-        { 
-            int h1_cor = correspondingEntity[h1];
+        if(float(randd(id)%1000)/1000.0 < combinationProbability[h1]) // 硬对齐 a=b , c -x
+        { //loss = y + positive - negative
+            int h1_cor = correspondingEntity[h1];//真实数据 a-b 0.5 可能模型认为 a-c 0.3 a-d 0.6
+            //h1=h1_cor;
             train_kb(h1_cor, t1, r, h2, t2, r);
             norm(entityVec + dimension * h1_cor);
         }
@@ -471,7 +472,7 @@ void do_combine()
     printf("Combination begins.\n");
 
     vector<pair<double, pair<int, int> > > distance2entitiesPair; 
-    for(auto &i : entitiesInKg1) 
+    for(auto &i : entitiesInKg1) // kg1 <-> kg2
     	for(auto &j : entitiesInKg2)
     	    distance2entitiesPair.push_back(make_pair(calc_distance(i, j), make_pair(i, j))); 
     sort(distance2entitiesPair.begin(), distance2entitiesPair.end()); 
@@ -487,7 +488,8 @@ void do_combine()
     		break;
     	}
     }
-
+//1. init
+//2.
     correspondingEntity.clear(); 
     fill(combinationProbability.begin(), combinationProbability.end(), 0); 
     int combination_counter = 0;
@@ -533,7 +535,7 @@ void* train_transe(void *con)
     	{
     	    pthread_t *pt = (pthread_t *)malloc(transeThreads * sizeof(pthread_t)); 
     	    for (int a = 0; a < transeThreads; a++)
-    	        pthread_create(&pt[a], NULL, transetrainMode,  (void*)a); 
+    	        pthread_create(&pt[a], NULL, transetrainMode,  (void*)a);
     	    for (int a = 0; a < transeThreads; a++)
     	        (pt[a], NULL);
     	    free(pt);
