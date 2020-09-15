@@ -133,7 +133,7 @@ void init() {
 //	}
     //实体向量初始化
     fin = fopen((inPath+'transe_init.txt').c_str(), "r");
-    entityTotal = 39654
+    entityTotal = 39654;
     entityVec = (float *)calloc(entityTotal * dimension, sizeof(float));
     for(int i=0; i<entityTotal*dimension; i++){
         tmp = fscanf(fin, "%f", &entityVec[i]);

@@ -9,6 +9,7 @@
 #include <pthread.h>
 #include <vector>
 #include <map>
+#include <iostream>
 
 using namespace std;
 
@@ -28,9 +29,9 @@ int attributeTotal,valueTotal,aTripleTotal;
 int a_transeLen;
 int a_transeBatch;
 float res;
-string lang ='fr_en'
+string lang = "fr_en";
 
-unsigned long long *next_random;
+unsigned long long * next_random;
 int *aLefHead, *aRigHead;
 int *aLefTail, *aRigTail;
 float *entityVec;
@@ -125,9 +126,10 @@ void init()
 	FILE *fin;
 	int tmp;
 
+    cout<<"0"<<endl;
     //属性向量初始化
     tmp = 1;
-    attributeTotal=310116;
+    attributeTotal=10969;
     attributeVec = (float *)calloc(attributeTotal * dimension, sizeof(float));
     for (int i = 0; i < attributeTotal; i++) 
     {
@@ -146,17 +148,19 @@ void init()
 //		norm(entityVec+i*dimension);
 //	}
     //实体向量初始化
-    fin = fopen((inPath+'transe_init.txt').c_str(), "r");
-    entityTotal = 39654
+    fin = fopen((inPath+"transe_init.txt").c_str(), "r");
+    entityTotal = 39654;
+    cout<<"1"<<endl;
     entityVec = (float *)calloc(entityTotal * dimension, sizeof(float));
     for(int i=0; i<entityTotal*dimension; i++){
         tmp = fscanf(fin, "%f", &entityVec[i]);
     }
 
+    cout<<"2"<<endl;
 
     //属性值向量初始化
     tmp = 1;
-    valueTotal = 310116;
+    valueTotal = 410207;
     valueVec = (float *)calloc(valueTotal * dimension, sizeof(float));
     for (int i = 0; i < valueTotal; i++) 
     {
@@ -164,17 +168,20 @@ void init()
             valueVec[i * dimension + ii] = randn(0, 1.0 / dimension, -6 / sqrt(dimension), 6 / sqrt(dimension));
         norm(valueVec+i*dimension);
     }
+    cout<<"3"<<endl;
 
     combinationProbability.resize(entityTotal);
     fill(combinationProbability.begin(), combinationProbability.end(), 0); 
 
-    fin = fopen((inPath + "aTriple2id1.txt").c_str(), "r"); 
-    tmp = fscanf(fin, "%d", &aTripleTotal);  //属性三元组的总数量
+    fin = fopen((inPath + "att_triple_all").c_str(), "r");
+    aTripleTotal = 1105208;
+//    tmp = fscanf(fin, "%d", &aTripleTotal);  //属性三元组的总数量
     aTrainHead = (Triple *)calloc(aTripleTotal, sizeof(Triple));
     aTrainTail = (Triple *)calloc(aTripleTotal, sizeof(Triple));
     aTrainList = (Triple *)calloc(aTripleTotal, sizeof(Triple));
     aTripleTotal = 0;
-    while (fscanf(fin, "%d", &aTrainList[aTripleTotal].h) == 1) 
+    cout<<"4"<<endl;
+    while (fscanf(fin, "%d", &aTrainList[aTripleTotal].h) == 1)
     {
         tmp = fscanf(fin, "%d", &aTrainList[aTripleTotal].t);
         tmp = fscanf(fin, "%d", &aTrainList[aTripleTotal].r); //读入属性三元组的 h a v
@@ -189,6 +196,7 @@ void init()
     fclose(fin);
     sort(aTrainHead, aTrainHead + aTripleTotal, cmp_head());
     sort(aTrainTail, aTrainTail + aTripleTotal, cmp_tail());
+    cout<<"5"<<endl;
 
     aLefHead = (int *)calloc(valueTotal, sizeof(int));
     aRigHead = (int *)calloc(valueTotal, sizeof(int));
@@ -211,10 +219,11 @@ void init()
     }
     aRigHead[aTrainHead[aTripleTotal - 1].h] = aTripleTotal - 1;
     aRigTail[aTrainTail[aTripleTotal - 1].t] = aTripleTotal - 1;
+    cout<<"6"<<endl;
 
     //载入已知的对齐实体 没用到
     int commonTotal; 
-    fin = fopen((inPath + "common_entities2id.txt").c_str(), "r");
+    fin = fopen((inPath + "ref_ent_ids").c_str(), "r");
     tmp = fscanf(fin, "%d", &commonTotal);
 
     for(int i = 0;i<commonTotal;i++)
@@ -549,8 +558,11 @@ void out_transe(string iter = "")
 
 int main() 
 {
+    cout<<"00"<<endl;
+
     srand(19950306);
     init();
+    cout<<"11"<<endl;
     train_transe(NULL);
     out_transe();
     return 0;
