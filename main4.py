@@ -376,7 +376,8 @@ class TransE:
                  tensorboard_log_dir="./result/TransE/fr_en/log/",
 
                  device="cuda",
-                 learning_rate=0.001
+                 learning_rate=0.001,
+                 visualize=False
                  ):
         self.entity_align_file = entity_align_file
         self.all_entity_file = all_entity_file
@@ -384,6 +385,7 @@ class TransE:
         self.all_value_file = all_value_file
         self.all_triple_file = all_triple_file
         self.device = device
+        self.visualize = visualize
         self.tensorboard_log_dir = tensorboard_log_dir
         self.checkpoint_path = checkpoint_path
         self.embedding_path = embedding_path
@@ -402,8 +404,9 @@ class TransE:
         self.attr_count = len(self.attr_list)
         self.value_count = len(self.value_list)
 
-        logger.info(
-            "entity: " + str(self.entity_count) + " attr: " + str(self.attr_count) + " value: " + str(self.value_count))
+        logger.info("entity: " + str(self.entity_count)
+                    + " attr: " + str(self.attr_count)
+                    + " value: " + str(self.value_count))
 
     def append_align_triple(self):
         self.train_triples = append_align_triple(self.train_triples, self.t.train_seeds)
@@ -465,7 +468,8 @@ class TransE:
                 ("loss", loss),
                 ("cost", round((time.time() - start_time)))
             ])
-            summary_writer.add_scalar(tag='Loss/train', scalar_value=loss, global_step=step)
+            if self.visualize:
+                summary_writer.add_scalar(tag='Loss/train', scalar_value=loss, global_step=step)
 
             if step > init_step and step % test_steps == 0:
                 logger.info("\n属性消融实验")
@@ -478,19 +482,21 @@ class TransE:
                 right_hits_10 = hits_right[2][1]
                 score = (left_hits_10 + right_hits_10) / 2
                 logger.info("score = " + str(score))
-                summary_writer.add_embedding(tag='Embedding',
-                                             mat=self.model.entity_embedding,
-                                             metadata=self.entity_name_list,
-                                             global_step=step)
-                summary_writer.add_scalar(tag='Hits@1/left', scalar_value=hits_left[0][1], global_step=step)
-                summary_writer.add_scalar(tag='Hits@10/left', scalar_value=hits_left[1][1], global_step=step)
-                summary_writer.add_scalar(tag='Hits@50/left', scalar_value=hits_left[2][1], global_step=step)
-                summary_writer.add_scalar(tag='Hits@100/left', scalar_value=hits_left[3][1], global_step=step)
 
-                summary_writer.add_scalar(tag='Hits@1/right', scalar_value=hits_right[0][1], global_step=step)
-                summary_writer.add_scalar(tag='Hits@10/right', scalar_value=hits_right[1][1], global_step=step)
-                summary_writer.add_scalar(tag='Hits@50/right', scalar_value=hits_right[2][1], global_step=step)
-                summary_writer.add_scalar(tag='Hits@100/right', scalar_value=hits_right[3][1], global_step=step)
+                if self.visualize:
+                    summary_writer.add_embedding(tag='Embedding',
+                                                 mat=self.model.entity_embedding,
+                                                 metadata=self.entity_name_list,
+                                                 global_step=step)
+                    summary_writer.add_scalar(tag='Hits@1/left', scalar_value=hits_left[0][1], global_step=step)
+                    summary_writer.add_scalar(tag='Hits@10/left', scalar_value=hits_left[1][1], global_step=step)
+                    summary_writer.add_scalar(tag='Hits@50/left', scalar_value=hits_left[2][1], global_step=step)
+                    summary_writer.add_scalar(tag='Hits@100/left', scalar_value=hits_left[3][1], global_step=step)
+
+                    summary_writer.add_scalar(tag='Hits@1/right', scalar_value=hits_right[0][1], global_step=step)
+                    summary_writer.add_scalar(tag='Hits@10/right', scalar_value=hits_right[1][1], global_step=step)
+                    summary_writer.add_scalar(tag='Hits@50/right', scalar_value=hits_right[2][1], global_step=step)
+                    summary_writer.add_scalar(tag='Hits@100/right', scalar_value=hits_right[3][1], global_step=step)
                 if score > last_score:
                     last_score = score
                     save_checkpoint(self.model, self.optim, 1, step, score, loss, self.checkpoint_path)
