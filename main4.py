@@ -402,7 +402,8 @@ class TransE:
         self.attr_count = len(self.attr_list)
         self.value_count = len(self.value_list)
 
-        logger.info("entity:", self.entity_count, "attr:", self.attr_count, "value:", self.value_count)
+        logger.info(
+            "entity:" + str(self.entity_count) + "attr:" + str(self.attr_count) + "value:" + str(self.value_count))
 
     def append_align_triple(self):
         self.train_triples = append_align_triple(self.train_triples, self.t.train_seeds)
@@ -564,6 +565,7 @@ def test_model():
     m.init_model()
     m.init_optimizer()
     m.run_test()
+
 
 train_model_for_fr_en()
 # train_model_for_ja_en()
