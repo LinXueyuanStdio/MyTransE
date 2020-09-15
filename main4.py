@@ -181,7 +181,7 @@ class Tester:
                 ret.append((int(th[0]), int(th[1])))
             self.seeds = ret
         # 80%训练集，20%测试集
-        train_percent = 0.8
+        train_percent = 0.3
         train_max_idx = int(train_percent * len(self.seeds))
         self.train_seeds = self.seeds[:train_max_idx]
         self.test_seeds = self.seeds[train_max_idx + 1:]
@@ -510,13 +510,16 @@ class TransE:
 
 
 def train_model_for_fr_en():
-    m = TransE()
+    m = TransE(
+        checkpoint_path="./result/TransE/ja_en/checkpoint_3_7.tar",
+        embedding_path="./result/TransE/ja_en/ATentsembed_3_7.txt"
+    )
     m.init_data()
     m.append_align_triple()
     m.init_dataset()
     m.init_model()
     m.init_optimizer()
-    m.run_train()
+    m.run_train(need_to_load_checkpoint=False)
 
 
 def train_model_for_ja_en():
@@ -562,6 +565,6 @@ def test_model():
     m.init_optimizer()
     m.run_test()
 
-
-train_model_for_ja_en()
-train_model_for_zh_en()
+train_model_for_fr_en()
+# train_model_for_ja_en()
+# train_model_for_zh_en()
