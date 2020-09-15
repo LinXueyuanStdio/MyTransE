@@ -154,7 +154,7 @@ void init() {
     fill(combinationProbability.begin(), combinationProbability.end(), 0);
 
     //属性三元组初始化
-    fin = fopen((inPath + "aTriple2id1.txt").c_str(), "r");
+    fin = fopen((inPath + "att_triple_all").c_str(), "r");
     tmp = fscanf(fin, "%d", &aTripleTotal);  //属性三元组的总数量
     aTrainHead = (Triple *)calloc(aTripleTotal, sizeof(Triple)); //
     aTrainTail = (Triple *)calloc(aTripleTotal, sizeof(Triple)); //
@@ -196,7 +196,7 @@ void init() {
 
     //载入已知的对齐实体 没用到
     int commonTotal;
-    fin = fopen((inPath + "common_entities2id.txt").c_str(), "r");
+    fin = fopen((inPath + "ref_ent_ids").c_str(), "r");
     tmp = fscanf(fin, "%d", &commonTotal);
 
     for(int i = 0;i<commonTotal;i++) {
