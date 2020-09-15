@@ -507,7 +507,7 @@ class TransE:
         left_hits_10 = hits_left[2][1]
         right_hits_10 = hits_right[2][1]
         score = (left_hits_10 + right_hits_10) / 2
-        logger.info("score = "+ str(score))
+        logger.info("score = " + str(score))
 
 
 def train_model_for_fr_en():
@@ -520,7 +520,7 @@ def train_model_for_fr_en():
     m.init_dataset()
     m.init_model()
     m.init_optimizer()
-    m.run_train(need_to_load_checkpoint=False)
+    m.run_train(need_to_load_checkpoint=True)
 
 
 def train_model_for_ja_en():
