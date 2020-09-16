@@ -397,14 +397,14 @@ def read_ids(dir_path, sp="\t"):
 
 def read_triple(triple_path):
     with open(triple_path, 'r') as fr:
-        SKG = set()
+        triples = set()
         for line in fr:
             line_split = line.split()
             head = int(line_split[0])
             tail = int(line_split[1])
             rel = int(line_split[2])
-            SKG.add((head, rel, tail))
-    return list(SKG)
+            triples.add((head, rel, tail))
+    return list(triples)
 
 
 entity_list = read_ids("data/fr_en/ent_ids_all")
@@ -420,7 +420,7 @@ learning_rate = 0.001
 tensorboard_log_dir = "./result/log/"
 checkpoint_path = "./result/fr_en/checkpoint.tar"
 train_set = DBP15kDataset('data/fr_en/att_triple_all', entity_list, value_list)
-train_generator = data.DataLoader(train_set, batch_size=2048)
+train_generator = data.DataLoader(train_set, batch_size=512)
 
 train_triples = read_triple("data/fr_en/att_triple_all")
 train_dataloader_head = data.DataLoader(
@@ -441,7 +441,6 @@ train_iterator = BidirectionalOneShotIterator(train_dataloader_head, train_datal
 
 model = TransE(entity_count, attr_count, value_count, device).to(device)
 optimizer = optim.SGD(model.parameters(), lr=learning_rate)
-summary_writer = tensorboard.SummaryWriter(log_dir=tensorboard_log_dir)
 
 start_epoch_id = 1
 step = 0
@@ -460,7 +459,6 @@ t.read_entity_align_list('data/fr_en/ref_ent_ids')  # 得到已知对齐实体
 for epoch_id in range(start_epoch_id, epochs + 1):
     print("epoch: ", epoch_id)
     loss_impacting_samples_count = 0
-    samples_count = 0
     model.train()
     progbar = Progbar(max_step=len(train_generator))
     idx = 0
@@ -475,28 +473,15 @@ for epoch_id in range(start_epoch_id, epochs + 1):
         negative_triples = torch.stack((negative_entities, attrs, negative_values), dim=1)  # B x 3
 
         optimizer.zero_grad()
-
         loss, pd, nd = model(positive_triples, negative_triples)
         loss.mean().backward()
-
-        summary_writer.add_scalar('Loss/train', loss.mean().data.cpu().numpy(), global_step=step)
-        summary_writer.add_scalar('Distance/positive', pd.sum().data.cpu().numpy(), global_step=step)
-        summary_writer.add_scalar('Distance/negative', nd.sum().data.cpu().numpy(), global_step=step)
-
-        loss = loss.data.cpu()
-        loss_impacting_samples_count += loss.nonzero().size()[0]
-        samples_count += loss.size()[0]
-
         optimizer.step()
+
         step += 1
         idx += 1
         progbar.update(idx, [("loss", loss.mean().data.cpu().numpy()),
                              ("positive", pd.sum().data.cpu().numpy()),
                              ("negative", nd.sum().data.cpu().numpy())])
-
-    summary_writer.add_scalar('Metrics/loss_impacting_samples',
-                              loss_impacting_samples_count / samples_count * 100,
-                              global_step=epoch_id)
 
     if epoch_id % 50 == 0:
         print("loss = ", loss.mean().data.cpu().numpy())

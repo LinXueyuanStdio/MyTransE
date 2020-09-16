@@ -5,6 +5,7 @@ from __future__ import print_function
 import sys
 import time
 from math import exp
+from random import random
 from typing import List, Tuple, Set
 
 from scipy import spatial
@@ -192,11 +193,10 @@ class KGEModel(nn.Module):
         return score
 
     @staticmethod
-    def train_step(model, optimizer, train_iterator, device="cuda"):
+    def train_step(model, optimizer, positive_sample, negative_sample, subsampling_weight, mode, device="cuda"):
 
         model.train()
         optimizer.zero_grad()
-        positive_sample, negative_sample, subsampling_weight, mode = next(train_iterator)
 
         positive_sample = positive_sample.to(device)
         negative_sample = negative_sample.to(device)
@@ -646,6 +646,18 @@ class TransE:
         self.combination_threshold = 3  # 小于这个距离则模型认为已对齐
         self.combination_restriction = 5000  # 模型认为对齐的实体对的个数
 
+    def soft_align(self, positive_sample, negative_sample):
+        print(positive_sample.size())
+        print(type(positive_sample))
+        print(positive_sample)
+        # if random():
+        #     for i in positive_sample:
+        #         h1_cor = self.correspondingEntity[h1]
+        #         pass
+        soft_positive_sample = torch.Tensor(positive_sample)
+        soft_negative_sample = torch.Tensor(negative_sample)
+        return soft_positive_sample, soft_negative_sample
+
     def do_combine(self):
         # 1. 按距离排序
         left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
@@ -701,12 +713,27 @@ class TransE:
         for step in range(init_step, total_steps):
             if step > 999 and step % 500 == 0:
                 self.do_combine()
-            loss = self.model.train_step(self.model, self.optim, self.train_iterator, self.device)
+            positive_sample, negative_sample, subsampling_weight, mode = next(self.train_iterator)
+            loss1 = self.model.train_step(self.model, self.optim,
+                                          positive_sample, negative_sample,
+                                          subsampling_weight, mode, self.device)
+            # 软对齐
+            # 根据模型认为的对齐实体，修改 positive_sample，negative_sample，再训练一轮
+            soft_positive_sample, soft_negative_sample = self.soft_align(positive_sample, negative_sample)
+            loss2 = self.model.train_step(self.model, self.optim,
+                                          soft_positive_sample, negative_sample,
+                                          subsampling_weight, mode, self.device)
+            loss3 = self.model.train_step(self.model, self.optim,
+                                          positive_sample, soft_negative_sample,
+                                          subsampling_weight, mode, self.device)
+            loss = loss1 + loss2 + loss3
+
             progbar.update(step - init_step, [
                 ("step", step - init_step),
                 ("loss", loss),
                 ("cost", round((time.time() - start_time)))
             ])
+            # 软对齐
             if self.visualize:
                 summary_writer.add_scalar(tag='Loss/train', scalar_value=loss, global_step=step)
 
