@@ -646,12 +646,11 @@ class TransE:
         self.combination_threshold = 3  # 小于这个距离则模型认为已对齐
         self.combination_restriction = 5000  # 模型认为对齐的实体对的个数
 
-    def soft_align(self, positive_sample, negative_sample):
+    def soft_align(self, positive_sample, negative_sample, mode='single'):
+        print(mode)
         print(positive_sample.size())
-        print(type(positive_sample))
-        print(positive_sample)
         print(negative_sample.size())
-        print(type(negative_sample))
+        print(positive_sample)
         print(negative_sample)
         # if random():
         #     for i in positive_sample:
@@ -722,7 +721,7 @@ class TransE:
                                           subsampling_weight, mode, self.device)
             # 软对齐
             # 根据模型认为的对齐实体，修改 positive_sample，negative_sample，再训练一轮
-            soft_positive_sample, soft_negative_sample = self.soft_align(positive_sample, negative_sample)
+            soft_positive_sample, soft_negative_sample = self.soft_align(positive_sample, negative_sample, mode)
             loss2 = self.model.train_step(self.model, self.optim,
                                           soft_positive_sample, negative_sample,
                                           subsampling_weight, mode, self.device)
