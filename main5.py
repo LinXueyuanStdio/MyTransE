@@ -650,12 +650,15 @@ class TransE:
         print(positive_sample.size())
         print(type(positive_sample))
         print(positive_sample)
+        print(negative_sample.size())
+        print(type(negative_sample))
+        print(negative_sample)
         # if random():
         #     for i in positive_sample:
         #         h1_cor = self.correspondingEntity[h1]
         #         pass
-        soft_positive_sample = torch.Tensor(positive_sample)
-        soft_negative_sample = torch.Tensor(negative_sample)
+        soft_positive_sample = torch.LongTensor(positive_sample)
+        soft_negative_sample = torch.LongTensor(negative_sample)
         return soft_positive_sample, soft_negative_sample
 
     def do_combine(self):
