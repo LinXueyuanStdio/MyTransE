@@ -515,12 +515,12 @@ t.read_entity_align_list('data/fr_en/ref_ent_ids')  # 得到已知对齐实体
 
 combination_restriction: int = 5000  # 模型认为对齐的实体对的个数
 combination_threshold: int = 3  # 小于这个距离则模型认为已对齐
-distance2entitiesPair: List[Tuple[int, Tuple[int, int]]] = []
+distance2entitiesPair: List[Tuple[float, Tuple[int, int]]] = []
 combinationProbability: List[float] = []  # [0, 1)
 correspondingEntity: Dict[int, int] = {}  # ent1 -> ent2
 
 
-def sigmoid(x):
+def sigmoid(x)-> float:
     return 1.0 / (1.0 + exp(-x))
 
 
@@ -531,14 +531,14 @@ def do_combine():
     left_vec = t.get_vec(model.entities_embedding, t.left_ids)
     right_vec = t.get_vec(model.entities_embedding, t.right_ids)
     sim = spatial.distance.cdist(left_vec, right_vec, metric='euclidean')
-    distance2entitiesPair: List[Tuple[int, Tuple[int, int]]] = []
+    distance2entitiesPair = []
     entity_pair_count = len(t.left_ids)
     for i in range(entity_pair_count):
         for j in range(entity_pair_count):
             distance2entitiesPair.append((sim[i, j], (t.left_ids[i], t.right_ids[j])))
     sorted(distance2entitiesPair, key=lambda it: it[0])
     # 初始化"模型认为两实体是对齐的"这件事的可信概率
-    combinationProbability: List[float] = [0] * entity_pair_count  # [0, 1)
+    combinationProbability = [0] * entity_pair_count  # [0, 1)
     # 模型认为的对齐实体
     correspondingEntity = {}
 
