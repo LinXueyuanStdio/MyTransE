@@ -317,8 +317,8 @@ class Tester:
         # 80%训练集，20%测试集
         train_percent = 0.3
         train_max_idx = int(train_percent * len(self.seeds))
-        self.train_seeds = self.seeds[:]  # TODO 所有实体参与初始化
-        self.test_seeds = self.seeds[:]  # TODO 所有实体参与测试
+        self.train_seeds = self.seeds[:train_max_idx]  # TODO 所有实体参与初始化
+        self.test_seeds = self.seeds[train_max_idx:]  # TODO 所有实体参与测试
         self.left_ids = []
         self.right_ids = []
         for left_entity, right_entity in self.test_seeds:
@@ -505,8 +505,8 @@ step = 0
 best_score = 0.0
 epochs = 8000
 
-# if checkpoint_path:
-#     start_epoch_id, step, best_score = load_checkpoint(checkpoint_path, model, optimizer)
+if checkpoint_path:
+    start_epoch_id, step, best_score = load_checkpoint(checkpoint_path, model, optimizer)
 
 logger.info(model)
 
