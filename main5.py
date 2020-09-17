@@ -752,7 +752,7 @@ class TransE:
         summary_writer = tensorboard.SummaryWriter(log_dir=self.tensorboard_log_dir)
         progbar = Progbar(max_step=total_steps - init_step)
         start_time = time.time()
-
+        self.do_combine()
         for step in range(init_step, total_steps):
             if step > 999 and step % 500 == 0:
                 self.do_combine()
