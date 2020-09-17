@@ -317,8 +317,8 @@ class Tester:
         # 80%训练集，20%测试集
         train_percent = 0.3
         train_max_idx = int(train_percent * len(self.seeds))
-        self.train_seeds = self.seeds[:train_max_idx]  # TODO 所有实体参与初始化
-        self.test_seeds = self.seeds[train_max_idx:]  # TODO 所有实体参与测试
+        self.train_seeds = self.seeds[:]  # TODO 所有实体参与初始化
+        self.test_seeds = self.seeds[:]  # TODO 所有实体参与测试
         self.left_ids = []
         self.right_ids = []
         for left_entity, right_entity in self.test_seeds:
@@ -570,7 +570,7 @@ for epoch_id in range(start_epoch_id, epochs + 1):
     model.train()
     progbar = Progbar(max_step=len(train_generator))
     idx = 0
-    if idx > 49 and idx % 50 == 0:
+    if idx > 4999 and idx % 5000 == 0:
         do_combine()
     for entities, attrs, values, negative_entities, negative_values in train_generator:
         entities = entities.to(device)  # Bx1
