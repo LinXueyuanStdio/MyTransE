@@ -645,6 +645,9 @@ class TransE:
     def init_soft_align(self):
         self.combination_threshold = 3  # 小于这个距离则模型认为已对齐
         self.combination_restriction = 5000  # 模型认为对齐的实体对的个数
+        self.distance2entitiesPair: List[Tuple[int, Tuple[int, int]]] = []
+        self.combinationProbability: List[float] = [0] * self.entity_count  # [0, 1)
+        self.correspondingEntity = {}
 
     def soft_align(self, positive_sample, negative_sample, mode='single'):
         batch_size = positive_sample.size()[0]
@@ -752,10 +755,14 @@ class TransE:
         summary_writer = tensorboard.SummaryWriter(log_dir=self.tensorboard_log_dir)
         progbar = Progbar(max_step=total_steps - init_step)
         start_time = time.time()
-        self.do_combine()
+        combine_delay = 0
         for step in range(init_step, total_steps):
             if step > 999 and step % 500 == 0:
-                self.do_combine()
+                if combine_delay > 0:
+                    combine_delay = combine_delay - 1
+                else:
+                    combine_delay = int(step / 1000)
+                    self.do_combine()
             positive_sample, negative_sample, subsampling_weight, mode = next(self.train_iterator)
             loss1 = self.model.train_step(self.model, self.optim,
                                           positive_sample, negative_sample,
