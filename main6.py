@@ -476,7 +476,7 @@ device = "cuda"
 learning_rate = 0.001
 tensorboard_log_dir = "./result/log/"
 checkpoint_path = "./result/fr_en/checkpoint.tar"
-batch_size = 1024
+batch_size = 2
 train_set = DBP15kDataset('data/fr_en/att_triple_all', entity_list, value_list)
 train_generator = data.DataLoader(train_set, batch_size=batch_size)
 

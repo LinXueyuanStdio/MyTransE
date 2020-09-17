@@ -536,8 +536,6 @@ void* train_transe(void *con)
     	    pthread_t *pt = (pthread_t *)malloc(transeThreads * sizeof(pthread_t)); 
     	    for (int a = 0; a < transeThreads; a++)
     	        pthread_create(&pt[a], NULL, transetrainMode,  (void*)a);
-    	    for (int a = 0; a < transeThreads; a++)
-    	        (pt[a], NULL);
     	    free(pt);
     	}
     	printf("epoch %d %f\n", epoch, res);
