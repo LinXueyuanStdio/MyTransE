@@ -652,12 +652,59 @@ class TransE:
         print(negative_sample.size())
         print(positive_sample)
         print(negative_sample)
-        # if random():
-        #     for i in positive_sample:
-        #         h1_cor = self.correspondingEntity[h1]
-        #         pass
-        soft_positive_sample = torch.LongTensor(positive_sample)
-        soft_negative_sample = torch.LongTensor(negative_sample)
+        batch_size = positive_sample.size()[0]
+        negative_sample_size = negative_sample.size()[1]
+        # positive_sample (batch_size, 3)
+        #     batch_size 个 (entity, attr, value) 的三元组
+        # negative_sample (batch_size, negative_sample_size)
+        #     batch_size 个长度为 negative_sample_size 的 (neg_id1, neg_id2, ...) 替换用的待使用id
+        # 设 e 是正例实体，e' 是负例实体，e* 是模型认为的e的对齐实体
+        # 1. head-batch
+        # (e, a, v) + (e'1, e'2, ..., e'n) ->
+        #   ((e, a, v), (e'1, a, v))
+        #   ((e, a, v), (e'2, a, v))
+        #   ...
+        #   ((e, a, v), (e'n, a, v))
+        # 2. tail-batch
+        # (e, a, v) + (v'1, v'2, ..., v'n) ->
+        #   ((e, a, v), (e, a, v'1))
+        #   ((e, a, v), (e, a, v'2))
+        #   ...
+        #   ((e, a, v), (e, a, v'n))
+        soft_positive_sample = positive_sample.clone()
+        soft_negative_sample = negative_sample.clone()
+        if mode == "head-batch":
+            # 负例是随机替换头部
+            # (neg_id1, neg_id2, ...) 是实体id
+            # ((e, a, v), (e'1, a, v))
+            # 已有 (e, a, v) + (e'1, e'2, ..., e'n)
+            for i in range(batch_size):
+                # 1. 模型认为头部是对齐的
+                h1 = soft_positive_sample[i][0]
+                if random() < self.combinationProbability[h1]:  # 如果可信
+                    # 希望 (e, a, v) (e', a, v) -> (e*, a, v) (e', a, v)
+                    h1_cor = self.correspondingEntity[h1]  # 获取模型认为的对齐实体
+                    soft_positive_sample[i][0] = h1_cor  # 替换为模型认为的对齐实体
+                # 2. 模型认为负例的头部是对齐的
+                for j in range(negative_sample_size):
+                    h2 = soft_negative_sample[i][j]
+                    if random() < self.combinationProbability[h2]:  # 如果可信
+                        # 希望 (e, a, v) (e', a, v) -> (e, a, v) (e*, a, v)
+                        h2_cor = self.correspondingEntity[h2]
+                        soft_negative_sample[i][j] = h2_cor
+        elif mode == "tail-batch":
+            # 负例是随机替换尾部
+            # (neg_id1, neg_id2, ...) 是属性值id
+            # ((e, a, v), (e, a, v'2))
+            # 已有 (e, a, v) + (v'1, v'2, ..., v'n)
+            for i in range(batch_size):
+                # 1. 模型认为头部是对齐的
+                h1 = soft_positive_sample[i][0]
+                if random() < self.combinationProbability[h1]:  # 如果可信
+                    # 希望 (e, a, v) (e', a, v) -> (e*, a, v) (e', a, v)
+                    h1_cor = self.correspondingEntity[h1]  # 获取模型认为的对齐实体
+                    soft_positive_sample[i][0] = h1_cor  # 替换为模型认为的对齐实体
+            pass
         return soft_positive_sample, soft_negative_sample
 
     def do_combine(self):
@@ -672,7 +719,7 @@ class TransE:
                 self.distance2entitiesPair.append((sim[i, j], (self.t.left_ids[i], self.t.right_ids[j])))
         sorted(self.distance2entitiesPair, key=lambda it: it[0])
         # 初始化"模型认为两实体是对齐的"这件事的可信概率
-        self.combinationProbability: List[float] = [0] * entity_pair_count
+        self.combinationProbability: List[float] = [0] * entity_pair_count  # [0, 1)
         # 模型认为的对齐实体
         self.correspondingEntity = {}
 
@@ -721,14 +768,15 @@ class TransE:
                                           subsampling_weight, mode, self.device)
             # 软对齐
             # 根据模型认为的对齐实体，修改 positive_sample，negative_sample，再训练一轮
-            soft_positive_sample, soft_negative_sample = self.soft_align(positive_sample, negative_sample, mode)
-            loss2 = self.model.train_step(self.model, self.optim,
-                                          soft_positive_sample, negative_sample,
-                                          subsampling_weight, mode, self.device)
-            loss3 = self.model.train_step(self.model, self.optim,
-                                          positive_sample, soft_negative_sample,
-                                          subsampling_weight, mode, self.device)
-            loss = loss1 + loss2 + loss3
+            # soft_positive_sample, soft_negative_sample = self.soft_align(positive_sample, negative_sample, mode)
+            # loss2 = self.model.train_step(self.model, self.optim,
+            #                               soft_positive_sample, negative_sample,
+            #                               subsampling_weight, mode, self.device)
+            # loss3 = self.model.train_step(self.model, self.optim,
+            #                               positive_sample, soft_negative_sample,
+            #                               subsampling_weight, mode, self.device)
+            # loss = loss1 + loss2 + loss3
+            loss = loss1
 
             progbar.update(step - init_step, [
                 ("step", step - init_step),
