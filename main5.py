@@ -385,7 +385,7 @@ class Tester:
         self.test_seeds = self.seeds[train_max_idx + 1:]
         self.left_ids = []
         self.right_ids = []
-        for left_entity, right_entity in self.test_seeds:
+        for left_entity, right_entity in self.seeds:
             self.left_ids.append(left_entity)  # 对齐的左边的实体
             self.right_ids.append(right_entity)  # 对齐的右边的实体
 
@@ -675,14 +675,14 @@ class TransE:
             # 已有 (e, a, v) + (e'1, e'2, ..., e'n)
             for i in range(batch_size):
                 # 1. 模型认为头部是对齐的
-                h1 = soft_positive_sample[i][0]
+                h1 = soft_positive_sample[i][0].item()
                 if random() < self.combinationProbability[h1]:  # 如果可信
                     # 希望 (e, a, v) (e', a, v) -> (e*, a, v) (e', a, v)
                     h1_cor = self.correspondingEntity[h1]  # 获取模型认为的对齐实体
                     soft_positive_sample[i][0] = h1_cor  # 替换为模型认为的对齐实体
                 # 2. 模型认为负例的头部是对齐的
                 for j in range(negative_sample_size):
-                    h2 = soft_negative_sample[i][j]
+                    h2 = soft_negative_sample[i][j].item()
                     if random() < self.combinationProbability[h2]:  # 如果可信
                         # 希望 (e, a, v) (e', a, v) -> (e, a, v) (e*, a, v)
                         h2_cor = self.correspondingEntity[h2]
@@ -694,7 +694,7 @@ class TransE:
             # 已有 (e, a, v) + (v'1, v'2, ..., v'n)
             for i in range(batch_size):
                 # 1. 模型认为头部是对齐的
-                h1 = soft_positive_sample[i][0]
+                h1 = soft_positive_sample[i][0].item()
                 if random() < self.combinationProbability[h1]:  # 如果可信
                     # 希望 (e, a, v) (e', a, v) -> (e*, a, v) (e', a, v)
                     h1_cor = self.correspondingEntity[h1]  # 获取模型认为的对齐实体
