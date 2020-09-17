@@ -647,11 +647,6 @@ class TransE:
         self.combination_restriction = 5000  # 模型认为对齐的实体对的个数
 
     def soft_align(self, positive_sample, negative_sample, mode='single'):
-        print(mode)
-        print(positive_sample.size())
-        print(negative_sample.size())
-        print(positive_sample)
-        print(negative_sample)
         batch_size = positive_sample.size()[0]
         negative_sample_size = negative_sample.size()[1]
         # positive_sample (batch_size, 3)
@@ -704,7 +699,6 @@ class TransE:
                     # 希望 (e, a, v) (e', a, v) -> (e*, a, v) (e', a, v)
                     h1_cor = self.correspondingEntity[h1]  # 获取模型认为的对齐实体
                     soft_positive_sample[i][0] = h1_cor  # 替换为模型认为的对齐实体
-            pass
         return soft_positive_sample, soft_negative_sample
 
     def do_combine(self):
@@ -768,15 +762,14 @@ class TransE:
                                           subsampling_weight, mode, self.device)
             # 软对齐
             # 根据模型认为的对齐实体，修改 positive_sample，negative_sample，再训练一轮
-            # soft_positive_sample, soft_negative_sample = self.soft_align(positive_sample, negative_sample, mode)
-            # loss2 = self.model.train_step(self.model, self.optim,
-            #                               soft_positive_sample, negative_sample,
-            #                               subsampling_weight, mode, self.device)
-            # loss3 = self.model.train_step(self.model, self.optim,
-            #                               positive_sample, soft_negative_sample,
-            #                               subsampling_weight, mode, self.device)
-            # loss = loss1 + loss2 + loss3
-            loss = loss1
+            soft_positive_sample, soft_negative_sample = self.soft_align(positive_sample, negative_sample, mode)
+            loss2 = self.model.train_step(self.model, self.optim,
+                                          soft_positive_sample, negative_sample,
+                                          subsampling_weight, mode, self.device)
+            loss3 = self.model.train_step(self.model, self.optim,
+                                          positive_sample, soft_negative_sample,
+                                          subsampling_weight, mode, self.device)
+            loss = (loss1 + loss2 + loss3) / 3
 
             progbar.update(step - init_step, [
                 ("step", step - init_step),
