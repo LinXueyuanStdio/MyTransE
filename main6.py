@@ -317,8 +317,8 @@ class Tester:
         # 80%训练集，20%测试集
         train_percent = 0.3
         train_max_idx = int(train_percent * len(self.seeds))
-        self.train_seeds = self.seeds[:train_max_idx]
-        self.test_seeds = self.seeds[train_max_idx + 1:]
+        self.train_seeds = self.seeds[:]  # TODO 所有实体参与初始化
+        self.test_seeds = self.seeds[:]  # TODO 所有实体参与测试
         self.left_ids = []
         self.right_ids = []
         for left_entity, right_entity in self.test_seeds:
@@ -512,27 +512,29 @@ logger.info(model)
 
 t = Tester()
 t.read_entity_align_list('data/fr_en/ref_ent_ids')  # 得到已知对齐实体
+entity_pair_count = len(t.left_ids)
+for left_entity, right_entity in t.train_seeds:
+    model.entities_embedding.weight.data[left_entity] = model.entities_embedding.weight.data[right_entity]
 
 combination_restriction: int = 5000  # 模型认为对齐的实体对的个数
 combination_threshold: int = 3  # 小于这个距离则模型认为已对齐
 distance2entitiesPair: List[Tuple[float, Tuple[int, int]]] = []
-combinationProbability: List[float] = []  # [0, 1)
+combinationProbability: List[float] = [0] * entity_pair_count  # [0, 1)
 correspondingEntity: Dict[int, int] = {}  # ent1 -> ent2
 
 
-def sigmoid(x)-> float:
+def sigmoid(x) -> float:
     return 1.0 / (1.0 + exp(-x))
 
 
 def do_combine():
     global correspondingEntity, combinationProbability, distance2entitiesPair
-    global combination_restriction, combination_threshold
+    global combination_restriction, combination_threshold, entity_pair_count
     # 1. 按距离排序
     left_vec = t.get_vec(model.entities_embedding, t.left_ids)
     right_vec = t.get_vec(model.entities_embedding, t.right_ids)
     sim = spatial.distance.cdist(left_vec, right_vec, metric='euclidean')
     distance2entitiesPair = []
-    entity_pair_count = len(t.left_ids)
     for i in range(entity_pair_count):
         for j in range(entity_pair_count):
             distance2entitiesPair.append((sim[i, j], (t.left_ids[i], t.right_ids[j])))
