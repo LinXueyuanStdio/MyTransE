@@ -509,8 +509,8 @@ epochs = 8000
 t = Tester()
 t.read_entity_align_list('data/fr_en/ref_ent_ids')  # 得到已知对齐实体
 entity_pair_count = len(t.train_seeds)
-
-if checkpoint_path:
+using_checkpoint_path = False
+if using_checkpoint_path:
     start_epoch_id, step, best_score = load_checkpoint(checkpoint_path, model, optimizer)
 else:
     for left_entity, right_entity in t.train_seeds:
