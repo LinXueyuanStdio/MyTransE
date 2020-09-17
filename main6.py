@@ -200,9 +200,9 @@ class DBP15kDataset(data.Dataset):
             self.negative_value_ids.append(negative_value)
         # 看一看
         for i in range(5):
-            print("triple:", self.triple[i],
-                  "\tnegative_entity:", self.negative_entity_ids[i],
-                  "\tnegative_value:", self.negative_value_ids[i])
+            logger.info("triple: " + str(self.triple[i]) +
+                        "\tnegative_entity:" + str(self.negative_entity_ids[i]) +
+                        "\tnegative_value:" + str(self.negative_value_ids[i]))
 
     def __len__(self):
         return len(self.triple)
@@ -519,7 +519,7 @@ for left_entity, right_entity in t.train_seeds:
 combination_restriction: int = 5000  # 模型认为对齐的实体对的个数
 combination_threshold: int = 3  # 小于这个距离则模型认为已对齐
 distance2entitiesPair: List[Tuple[float, Tuple[int, int]]] = []
-combinationProbability: List[float] = [0] * entity_pair_count  # [0, 1)
+combinationProbability: List[float] = [0] * entity_count  # [0, 1)
 correspondingEntity: Dict[int, int] = {}  # ent1 -> ent2
 
 
@@ -529,7 +529,7 @@ def sigmoid(x) -> float:
 
 def do_combine():
     global correspondingEntity, combinationProbability, distance2entitiesPair
-    global combination_restriction, combination_threshold, entity_pair_count
+    global combination_restriction, combination_threshold, entity_pair_count, entity_count
     # 1. 按距离排序
     left_vec = t.get_vec(model.entities_embedding, t.left_ids)
     right_vec = t.get_vec(model.entities_embedding, t.right_ids)
@@ -540,7 +540,7 @@ def do_combine():
             distance2entitiesPair.append((sim[i, j], (t.left_ids[i], t.right_ids[j])))
     sorted(distance2entitiesPair, key=lambda it: it[0])
     # 初始化"模型认为两实体是对齐的"这件事的可信概率
-    combinationProbability = [0] * entity_pair_count  # [0, 1)
+    combinationProbability = [0] * entity_count  # [0, 1)
     # 模型认为的对齐实体
     correspondingEntity = {}
 
