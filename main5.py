@@ -713,7 +713,7 @@ class TransE:
                 self.distance2entitiesPair.append((sim[i, j], (self.t.left_ids[i], self.t.right_ids[j])))
         sorted(self.distance2entitiesPair, key=lambda it: it[0])
         # 初始化"模型认为两实体是对齐的"这件事的可信概率
-        self.combinationProbability: List[float] = [0] * entity_pair_count  # [0, 1)
+        self.combinationProbability: List[float] = [0] * self.entity_count  # [0, 1)
         # 模型认为的对齐实体
         self.correspondingEntity = {}
 
