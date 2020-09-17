@@ -599,7 +599,7 @@ for epoch_id in range(start_epoch_id, epochs + 1):
 
         # 软对齐
         # 换正例的头
-        for i in range(batch_size):
+        for i in range(soft_h1.size()[0]):
             h1 = soft_h1[i]
             if random.random() < combinationProbability[h1]:
                 soft_h1[i] = correspondingEntity[h1]
@@ -610,7 +610,7 @@ for epoch_id in range(start_epoch_id, epochs + 1):
         optimizer.step()
 
         # 换负例的头
-        for i in range(batch_size):
+        for i in range(soft_h2.size()[0]):
             h2 = soft_h2[i]
             if random.random() < combinationProbability[h2]:
                 soft_h2[i] = correspondingEntity[h2]
