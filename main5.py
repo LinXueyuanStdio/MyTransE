@@ -729,10 +729,11 @@ class TransE:
             occupied.add(ent2)
             self.combinationProbability[ent1] = sigmoid(self.combination_threshold - dis)  # 必有 p > 0.5
             self.combinationProbability[ent2] = sigmoid(self.combination_threshold - dis)
-            if combination_counter == self.combination_restriction:
+            if combination_counter >= self.combination_restriction:
                 break
             combination_counter += 1
         self.combination_restriction += 1000
+        logger.info("model : I think " + str(len(self.model_think_align_entities)) + " entities are aligned!")
 
     def run_train(self, need_to_load_checkpoint=True):
         logger.info("start training")
