@@ -1,3 +1,6 @@
+import logging
+from math import exp
+
 import numpy as np
 import torch
 from torch.utils import data
@@ -5,7 +8,7 @@ from torch.utils import tensorboard
 from torch import nn
 from torch import optim
 from torch.optim import optimizer
-from typing import Tuple, List
+from typing import Tuple, List, Set, Dict
 import numpy as np
 from scipy import spatial
 import random
@@ -18,6 +21,30 @@ from dataloader import BidirectionalOneShotIterator
 
 torch.random.manual_seed(123456)
 
+
+# region 日志
+def get_logger(filename):
+    """
+    Return instance of logger
+    统一的日志样式
+    """
+    logger = logging.getLogger('logger')
+    logger.setLevel(logging.INFO)
+    logging.basicConfig(format='%(message)s', level=logging.INFO)
+
+    handler = logging.FileHandler(filename)
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(message)s'))
+
+    logging.getLogger().addHandler(handler)
+
+    return logger
+
+
+logger = get_logger("./train.log")
+
+
+# endregion
 
 class Progbar(object):
     """
@@ -270,9 +297,11 @@ class TransE(nn.Module):
 
 
 class Tester:
-    left: List[int] = []
-    right: List[int] = []
-    seeds = []
+    left_ids: List[int] = []  # test_seeds 中对齐实体的左实体id
+    right_ids: List[int] = []  # test_seeds 中对齐实体的右实体id
+    seeds: List[Tuple[int, int]] = []  # (m, 2) 对齐的实体对(a,b)称a为左实体，b为右实体
+    train_seeds: List[Tuple[int, int]] = []  # (0.8m, 2)
+    test_seeds: List[Tuple[int, int]] = []  # (0.2m, 2)
     linkEmbedding = []
     kg1E = []
     kg2E = []
@@ -283,10 +312,18 @@ class Tester:
         with open(entity_align_file_path, encoding='utf-8') as f:
             for line in f:
                 th = line[:-1].split('\t')
-                self.left.append(int(th[0]))
-                self.right.append(int(th[1]))
                 ret.append((int(th[0]), int(th[1])))
             self.seeds = ret
+        # 80%训练集，20%测试集
+        train_percent = 0.3
+        train_max_idx = int(train_percent * len(self.seeds))
+        self.train_seeds = self.seeds[:train_max_idx]
+        self.test_seeds = self.seeds[train_max_idx + 1:]
+        self.left_ids = []
+        self.right_ids = []
+        for left_entity, right_entity in self.test_seeds:
+            self.left_ids.append(left_entity)  # 对齐的左边的实体
+            self.right_ids.append(right_entity)  # 对齐的右边的实体
 
     def XRA(self, entity_embedding_file_path):
         self.linkEmbedding = []
@@ -298,23 +335,41 @@ class Tester:
             self.linkEmbedding.append(aline_list)
 
     @staticmethod
-    def get_vec(entities_embedding, id_list, device="cuda"):
+    def get_vec(entities_embedding, id_list: List[int], device="cuda"):
         tensor = torch.LongTensor(id_list).view(-1, 1).to(device)
         return entities_embedding(tensor).view(-1, 200).cpu().detach().numpy()
 
+    @staticmethod
+    def get_vec2(entities_embedding, id_list: List[int], device="cuda"):
+        all_entity_ids = torch.LongTensor(id_list).view(-1).to(device)
+        all_entity_vec = torch.index_select(
+            entities_embedding,
+            dim=0,
+            index=all_entity_ids
+        ).view(-1, 200).cpu().detach().numpy()
+        return all_entity_vec
+
     def calculate(self, top_k=(1, 10, 50, 100)):
-        Lvec = np.array([self.linkEmbedding[e1] for e1, e2 in self.seeds])
-        Rvec = np.array([self.linkEmbedding[e2] for e1, e2 in self.seeds])
+        Lvec = np.array([self.linkEmbedding[e1] for e1, e2 in self.test_seeds])
+        Rvec = np.array([self.linkEmbedding[e2] for e1, e2 in self.test_seeds])
         return self.get_hits(Lvec, Rvec, top_k)
 
     def get_hits(self, Lvec, Rvec, top_k=(1, 10, 50, 100)):
         sim = spatial.distance.cdist(Lvec, Rvec, metric='cityblock')
+        # Lvec (m, d), Rvec (m, d)
+        # Lvec和Rvec分别是对齐的左右实体的嵌入组成的列表，d是嵌入维度，m是实体个数
+        # sim=distance(Lvec, Rvec) (m, m)
+        # sim[i, j] 表示在 Lvec 的实体 i 到 Rvec 的实体 j 的距离
         top_lr = [0] * len(top_k)
         for i in range(Lvec.shape[0]):  # 对于每个KG1实体
             rank = sim[i, :].argsort()
+            # sim[i, :] 是一个行向量，表示将 Lvec 中的实体 i 到 Rvec 的所有实体的距离
+            # argsort 表示将距离按大小排序，返回排序后的下标。比如[6,3,5]下标[0,1,2]，排序后[3,5,6]，则返回[1,2,0]
             rank_index = np.where(rank == i)[0][0]
+            # 对于一维向量，np.where(rank == i) 等价于 list(rank).index(i)，即查找元素 i 在 rank 中的下标
+            # 这里的 i 不是代表 Lvec 中的实体 i 的下标，而是代表 Rvec 中和 i 对齐的实体的下标。
             for j in range(len(top_k)):
-                if rank_index < top_k[j]:
+                if rank_index < top_k[j]:  # index 从 0 开始，因此用 '<' 号
                     top_lr[j] += 1
         top_rl = [0] * len(top_k)
         for i in range(Rvec.shape[0]):
@@ -323,20 +378,20 @@ class Tester:
             for j in range(len(top_k)):
                 if rank_index < top_k[j]:
                     top_rl[j] += 1
-        print('For each left:')
+        logger.info('For each left:')
         left = []
         for i in range(len(top_lr)):
             hits = top_k[i]
-            hits_value = top_lr[i] / len(self.seeds) * 100
+            hits_value = top_lr[i] / len(self.test_seeds) * 100
             left.append((hits, hits_value))
-            print('Hits@%d: %.2f%%' % (hits, hits_value))
-        print('For each right:')
+            logger.info('Hits@%d: %.2f%%' % (hits, hits_value))
+        logger.info('For each right:')
         right = []
         for i in range(len(top_rl)):
             hits = top_k[i]
-            hits_value = top_rl[i] / len(self.seeds) * 100
+            hits_value = top_rl[i] / len(self.test_seeds) * 100
             right.append((hits, hits_value))
-            print('Hits@%d: %.2f%%' % (hits, hits_value))
+            logger.info('Hits@%d: %.2f%%' % (hits, hits_value))
 
         return {
             "left": left,
@@ -414,25 +469,28 @@ value_list = read_ids("data/fr_en/att_value2id_all")
 entity_count = len(entity_list)
 attr_count = len(attr_list)
 value_count = len(value_list)
-print("entity:", entity_count, "attr:", attr_count, "value:", value_count)
+logger.info("entity: " + str(entity_count)
+            + " attr: " + str(attr_count)
+            + " value: " + str(value_count))
 device = "cuda"
 learning_rate = 0.001
 tensorboard_log_dir = "./result/log/"
 checkpoint_path = "./result/fr_en/checkpoint.tar"
+batch_size = 1024
 train_set = DBP15kDataset('data/fr_en/att_triple_all', entity_list, value_list)
-train_generator = data.DataLoader(train_set, batch_size=512)
+train_generator = data.DataLoader(train_set, batch_size=batch_size)
 
 train_triples = read_triple("data/fr_en/att_triple_all")
 train_dataloader_head = data.DataLoader(
     TrainDataset(train_triples, entity_count, attr_count, value_count, 256, 'head-batch'),
-    batch_size=1024,
+    batch_size=batch_size,
     shuffle=False,
     num_workers=4,
     collate_fn=TrainDataset.collate_fn
 )
 train_dataloader_tail = data.DataLoader(
     TrainDataset(train_triples, entity_count, attr_count, value_count, 256, 'tail-batch'),
-    batch_size=1024,
+    batch_size=batch_size,
     shuffle=False,
     num_workers=4,
     collate_fn=TrainDataset.collate_fn
@@ -450,18 +508,68 @@ epochs = 8000
 # if checkpoint_path:
 #     start_epoch_id, step, best_score = load_checkpoint(checkpoint_path, model, optimizer)
 
-print(model)
+logger.info(model)
 
 t = Tester()
 t.read_entity_align_list('data/fr_en/ref_ent_ids')  # 得到已知对齐实体
 
+combination_restriction: int = 5000  # 模型认为对齐的实体对的个数
+combination_threshold: int = 3  # 小于这个距离则模型认为已对齐
+distance2entitiesPair: List[Tuple[int, Tuple[int, int]]] = []
+combinationProbability: List[float] = []  # [0, 1)
+correspondingEntity: Dict[int, int] = {}  # ent1 -> ent2
+
+
+def sigmoid(x):
+    return 1.0 / (1.0 + exp(-x))
+
+
+def do_combine():
+    global correspondingEntity, combinationProbability, distance2entitiesPair
+    global combination_restriction, combination_threshold
+    # 1. 按距离排序
+    left_vec = t.get_vec(model.entities_embedding, t.left_ids)
+    right_vec = t.get_vec(model.entities_embedding, t.right_ids)
+    sim = spatial.distance.cdist(left_vec, right_vec, metric='euclidean')
+    distance2entitiesPair: List[Tuple[int, Tuple[int, int]]] = []
+    entity_pair_count = len(t.left_ids)
+    for i in range(entity_pair_count):
+        for j in range(entity_pair_count):
+            distance2entitiesPair.append((sim[i, j], (t.left_ids[i], t.right_ids[j])))
+    sorted(distance2entitiesPair, key=lambda it: it[0])
+    # 初始化"模型认为两实体是对齐的"这件事的可信概率
+    combinationProbability: List[float] = [0] * entity_pair_count  # [0, 1)
+    # 模型认为的对齐实体
+    correspondingEntity = {}
+
+    occupied: Set[int] = set()
+    combination_counter = 0
+    for dis, (ent1, ent2) in distance2entitiesPair:
+        if dis > combination_threshold:
+            break
+        if ent1 in occupied or ent2 in occupied:
+            continue
+        correspondingEntity[ent1] = ent2
+        correspondingEntity[ent2] = ent1
+        occupied.add(ent1)
+        occupied.add(ent2)
+        combinationProbability[ent1] = sigmoid(combination_threshold - dis)
+        combinationProbability[ent2] = sigmoid(combination_threshold - dis)
+        if combination_counter == combination_restriction:
+            break
+        combination_counter += 1
+    combination_restriction += 1000
+
+
 # Training loop
 for epoch_id in range(start_epoch_id, epochs + 1):
-    print("epoch: ", epoch_id)
+    logger.info("epoch: " + str(epoch_id))
     loss_impacting_samples_count = 0
     model.train()
     progbar = Progbar(max_step=len(train_generator))
     idx = 0
+    if idx > 999 and idx % 500 == 0:
+        do_combine()
     for entities, attrs, values, negative_entities, negative_values in train_generator:
         entities = entities.to(device)  # Bx1
         attrs = attrs.to(device)  # Bx1
@@ -469,11 +577,44 @@ for epoch_id in range(start_epoch_id, epochs + 1):
         negative_entities = negative_entities.to(device)  # Bx1
         negative_values = negative_values.to(device)  # Bx1
 
-        positive_triples = torch.stack((entities, attrs, values), dim=1)  # B x 3
-        negative_triples = torch.stack((negative_entities, attrs, negative_values), dim=1)  # B x 3
+        if random.random() < 0.5:
+            # 替换头 [0, 0.5)
+            positive_triples = torch.stack((entities, attrs, values), dim=1)  # B x 3
+            negative_triples = torch.stack((negative_entities, attrs, values), dim=1)  # B x 3
+            soft_h1 = entities
+            soft_h2 = negative_entities
+        else:
+            # 替换尾 [0.5, 1)
+            positive_triples = torch.stack((entities, attrs, values), dim=1)  # B x 3
+            negative_triples = torch.stack((entities, attrs, negative_values), dim=1)  # B x 3
+            soft_h1 = entities
+            soft_h2 = entities
 
         optimizer.zero_grad()
         loss, pd, nd = model(positive_triples, negative_triples)
+        loss.mean().backward()
+        optimizer.step()
+
+        # 软对齐
+        # 换正例的头
+        for i in range(batch_size):
+            h1 = soft_h1[i]
+            if random.random() < combinationProbability[h1]:
+                soft_h1[i] = correspondingEntity[h1]
+        soft_positive_triples = torch.stack((soft_h1, attrs, values), dim=1)  # B x 3
+        optimizer.zero_grad()
+        loss, pd, nd = model(soft_positive_triples, negative_triples)
+        loss.mean().backward()
+        optimizer.step()
+
+        # 换负例的头
+        for i in range(batch_size):
+            h2 = soft_h2[i]
+            if random.random() < combinationProbability[h2]:
+                soft_h2[i] = correspondingEntity[h2]
+        soft_negative_triples = torch.stack((soft_h2, attrs, values), dim=1)  # B x 3
+        optimizer.zero_grad()
+        loss, pd, nd = model(positive_triples, soft_negative_triples)
         loss.mean().backward()
         optimizer.step()
 
@@ -484,15 +625,15 @@ for epoch_id in range(start_epoch_id, epochs + 1):
                              ("negative", nd.sum().data.cpu().numpy())])
 
     if epoch_id % 50 == 0:
-        print("loss = ", loss.mean().data.cpu().numpy())
-        print("属性消融实验")
-        left_vec = t.get_vec(model.entities_embedding, t.left)
-        right_vec = t.get_vec(model.entities_embedding, t.right)
+        logger.info("loss = " + str(loss.mean().data.cpu().numpy()))
+        logger.info("属性消融实验")
+        left_vec = t.get_vec(model.entities_embedding, t.left_ids)
+        right_vec = t.get_vec(model.entities_embedding, t.right_ids)
         hits = t.get_hits(left_vec, right_vec)
         left_hits_10 = hits["left"][2][1]
         right_hits_10 = hits["right"][2][1]
         score = (left_hits_10 + right_hits_10) / 2
-        print("score=", score)
+        logger.info("score = " + str(score))
         if score > best_score:
             best_score = score
             save_entity_list(model)
