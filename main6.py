@@ -499,22 +499,22 @@ train_iterator = BidirectionalOneShotIterator(train_dataloader_head, train_datal
 
 model = TransE(entity_count, attr_count, value_count, device).to(device)
 optimizer = optim.SGD(model.parameters(), lr=learning_rate)
+logger.info(model)
 
 start_epoch_id = 1
 step = 0
 best_score = 0.0
 epochs = 8000
 
-if checkpoint_path:
-    start_epoch_id, step, best_score = load_checkpoint(checkpoint_path, model, optimizer)
-
-logger.info(model)
-
 t = Tester()
 t.read_entity_align_list('data/fr_en/ref_ent_ids')  # 得到已知对齐实体
-entity_pair_count = len(t.left_ids)
-for left_entity, right_entity in t.train_seeds:
-    model.entities_embedding.weight.data[left_entity] = model.entities_embedding.weight.data[right_entity]
+entity_pair_count = len(t.train_seeds)
+
+if checkpoint_path:
+    start_epoch_id, step, best_score = load_checkpoint(checkpoint_path, model, optimizer)
+else:
+    for left_entity, right_entity in t.train_seeds:
+        model.entities_embedding.weight.data[left_entity] = model.entities_embedding.weight.data[right_entity]
 
 combination_restriction: int = 5000  # 模型认为对齐的实体对的个数
 combination_threshold: int = 3  # 小于这个距离则模型认为已对齐
@@ -570,7 +570,7 @@ for epoch_id in range(start_epoch_id, epochs + 1):
     model.train()
     progbar = Progbar(max_step=len(train_generator))
     idx = 0
-    if idx > 999 and idx % 500 == 0:
+    if idx > 49 and idx % 50 == 0:
         do_combine()
     for entities, attrs, values, negative_entities, negative_values in train_generator:
         entities = entities.to(device)  # Bx1
@@ -626,7 +626,7 @@ for epoch_id in range(start_epoch_id, epochs + 1):
                              ("positive", pd.sum().data.cpu().numpy()),
                              ("negative", nd.sum().data.cpu().numpy())])
 
-    if epoch_id % 50 == 0:
+    if epoch_id % 10 == 0:
         logger.info("loss = " + str(loss.mean().data.cpu().numpy()))
         logger.info("属性消融实验")
         left_vec = t.get_vec(model.entities_embedding, t.left_ids)
