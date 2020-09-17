@@ -601,8 +601,6 @@ for epoch_id in range(start_epoch_id, epochs + 1):
         # 换正例的头
         for i in range(batch_size):
             h1 = soft_h1[i]
-            print(len(combinationProbability))
-            print(h1)
             if random.random() < combinationProbability[h1]:
                 soft_h1[i] = correspondingEntity[h1]
         soft_positive_triples = torch.stack((soft_h1, attrs, values), dim=1)  # B x 3
