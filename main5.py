@@ -648,10 +648,10 @@ class TransE:
         self.distance2entitiesPair: List[Tuple[int, Tuple[int, int]]] = []
         self.combinationProbability: List[float] = [0] * self.entity_count  # [0, 1)
         self.correspondingEntity = {}
+        self.model_think_align_entities = []
 
     def soft_align(self, positive_sample, negative_sample, mode='single'):
         batch_size = positive_sample.size()[0]
-        negative_sample_size = negative_sample.size()[1]
         # positive_sample (batch_size, 3)
         #     batch_size 个 (entity, attr, value) 的三元组
         # negative_sample (batch_size, negative_sample_size)
@@ -670,7 +670,6 @@ class TransE:
         #   ...
         #   ((e, a, v), (e, a, v'n))
         soft_positive_sample = positive_sample.clone()
-        soft_negative_sample = negative_sample.clone()
         if mode == "head-batch":
             # 负例是随机替换头部
             # (neg_id1, neg_id2, ...) 是实体id
@@ -679,17 +678,10 @@ class TransE:
             for i in range(batch_size):
                 # 1. 模型认为头部是对齐的
                 h1 = soft_positive_sample[i][0].item()
-                if random() < self.combinationProbability[h1]:  # 如果可信
+                if self.combinationProbability[h1] >= 0.5:  # 如果可信
                     # 希望 (e, a, v) (e', a, v) -> (e*, a, v) (e', a, v)
                     h1_cor = self.correspondingEntity[h1]  # 获取模型认为的对齐实体
                     soft_positive_sample[i][0] = h1_cor  # 替换为模型认为的对齐实体
-                # 2. 模型认为负例的头部是对齐的
-                for j in range(negative_sample_size):
-                    h2 = soft_negative_sample[i][j].item()
-                    if random() < self.combinationProbability[h2]:  # 如果可信
-                        # 希望 (e, a, v) (e', a, v) -> (e, a, v) (e*, a, v)
-                        h2_cor = self.correspondingEntity[h2]
-                        soft_negative_sample[i][j] = h2_cor
         elif mode == "tail-batch":
             # 负例是随机替换尾部
             # (neg_id1, neg_id2, ...) 是属性值id
@@ -698,11 +690,11 @@ class TransE:
             for i in range(batch_size):
                 # 1. 模型认为头部是对齐的
                 h1 = soft_positive_sample[i][0].item()
-                if random() < self.combinationProbability[h1]:  # 如果可信
+                if self.combinationProbability[h1] >= 0.5:  # 如果可信
                     # 希望 (e, a, v) (e', a, v) -> (e*, a, v) (e', a, v)
                     h1_cor = self.correspondingEntity[h1]  # 获取模型认为的对齐实体
                     soft_positive_sample[i][0] = h1_cor  # 替换为模型认为的对齐实体
-        return soft_positive_sample, soft_negative_sample
+        return soft_positive_sample
 
     def do_combine(self):
         # 1. 按距离排序
@@ -719,6 +711,7 @@ class TransE:
         self.combinationProbability: List[float] = [0] * self.entity_count  # [0, 1)
         # 模型认为的对齐实体
         self.correspondingEntity = {}
+        self.model_think_align_entities = []
 
         occupied: Set[int] = set()
         combination_counter = 0
@@ -726,13 +719,15 @@ class TransE:
         for dis, (ent1, ent2) in self.distance2entitiesPair:
             if dis > self.combination_threshold:
                 break
+            # dis <= self.combination_threshold 距离在可信范围内
             if ent1 in occupied or ent2 in occupied:
                 continue
             self.correspondingEntity[ent1] = ent2
             self.correspondingEntity[ent2] = ent1
+            self.model_think_align_entities.append((ent1, ent2))
             occupied.add(ent1)
             occupied.add(ent2)
-            self.combinationProbability[ent1] = sigmoid(self.combination_threshold - dis)
+            self.combinationProbability[ent1] = sigmoid(self.combination_threshold - dis)  # 必有 p > 0.5
             self.combinationProbability[ent2] = sigmoid(self.combination_threshold - dis)
             if combination_counter == self.combination_restriction:
                 break
@@ -755,35 +750,29 @@ class TransE:
         summary_writer = tensorboard.SummaryWriter(log_dir=self.tensorboard_log_dir)
         progbar = Progbar(max_step=total_steps - init_step)
         start_time = time.time()
-        combine_delay = 0
+        model_is_able_to_predict_align_entities = False
         for step in range(init_step, total_steps):
             if step > 999 and step % 500 == 0:
-                if combine_delay > 0:
-                    combine_delay = combine_delay - 1
-                else:
-                    combine_delay = int(step / 1000)
-                    self.do_combine()
+                model_is_able_to_predict_align_entities = True
+                self.do_combine()
             positive_sample, negative_sample, subsampling_weight, mode = next(self.train_iterator)
-            loss1 = self.model.train_step(self.model, self.optim,
+            loss = self.model.train_step(self.model, self.optim,
                                           positive_sample, negative_sample,
                                           subsampling_weight, mode, self.device)
             # 软对齐
             # 根据模型认为的对齐实体，修改 positive_sample，negative_sample，再训练一轮
-            soft_positive_sample, soft_negative_sample = self.soft_align(positive_sample, negative_sample, mode)
-            loss2 = self.model.train_step(self.model, self.optim,
-                                          soft_positive_sample, negative_sample,
-                                          subsampling_weight, mode, self.device)
-            loss3 = self.model.train_step(self.model, self.optim,
-                                          positive_sample, soft_negative_sample,
-                                          subsampling_weight, mode, self.device)
-            loss = (loss1 + loss2 + loss3) / 3
+            if model_is_able_to_predict_align_entities:
+                soft_positive_sample = self.soft_align(positive_sample, negative_sample, mode)
+                loss2 = self.model.train_step(self.model, self.optim,
+                                              soft_positive_sample, negative_sample,
+                                              subsampling_weight, mode, self.device)
+                loss = (loss + loss2) / 2
 
             progbar.update(step - init_step, [
                 ("step", step - init_step),
                 ("loss", loss),
                 ("cost", round((time.time() - start_time)))
             ])
-            # 软对齐
             if self.visualize:
                 summary_writer.add_scalar(tag='Loss/train', scalar_value=loss, global_step=step)
 
