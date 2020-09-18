@@ -703,7 +703,7 @@ class TransE:
 
     def do_combine(self, thread_name, sim):
         # sim[i, j] 表示在 Lvec 的实体 i 到 Rvec 的实体 j 的距离
-        logger.info("线程运行中 " + thread_name)
+        logger.info("模型对齐中 " + thread_name)
         computing_time = time.time()
         # 1. 按距离排序
         self.distance2entitiesPair: List[Tuple[int, Tuple[int, int]]] = []
@@ -746,7 +746,7 @@ class TransE:
         self.correspondingEntity = correspondingEntity
         self.model_is_able_to_predict_align_entities = True  # 解锁
         logger.info("model : I think " + str(len(self.model_think_align_entities)) + " entities are aligned!")
-        logger.info("线程运行完成 " + thread_name + ", 用时 " + str(time.time() - computing_time))
+        logger.info("模型对齐完成 " + thread_name + ", 用时 " + str(time.time() - computing_time))
 
     def run_train(self, need_to_load_checkpoint=True):
         logger.info("start training")
