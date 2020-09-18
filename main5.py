@@ -834,8 +834,8 @@ def run_test(self):
 
 def train_model_for_fr_en():
     m = TransE(
-        checkpoint_path="./result/TransE/ja_en/checkpoint.tar",
-        embedding_path="./result/TransE/ja_en/ATentsembed.txt"
+        checkpoint_path="./result/TransE2/ja_en/checkpoint.tar",
+        embedding_path="./result/TransE2/ja_en/ATentsembed.txt"
     )
     m.init_data()
     # m.append_align_triple()
