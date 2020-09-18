@@ -655,7 +655,7 @@ class TransE:
         self.model_think_align_entities = []
         self.model_is_able_to_predict_align_entities = False
 
-    def soft_align(self, positive_sample, negative_sample, mode='single'):
+    def soft_align(self, positive_sample, mode='single'):
         batch_size = positive_sample.size()[0]
         # positive_sample (batch_size, 3)
         #     batch_size 个 (entity, attr, value) 的三元组
@@ -683,7 +683,7 @@ class TransE:
             for i in range(batch_size):
                 # 1. 模型认为头部是对齐的
                 h1 = soft_positive_sample[i][0].item()
-                if self.combinationProbability[h1] >= 0.5:  # 如果可信
+                if self.combinationProbability[h1] >= 0.5 and h1 in self.correspondingEntity:  # 如果可信
                     # 希望 (e, a, v) (e', a, v) -> (e*, a, v) (e', a, v)
                     h1_cor = self.correspondingEntity[h1]  # 获取模型认为的对齐实体
                     soft_positive_sample[i][0] = h1_cor  # 替换为模型认为的对齐实体
@@ -695,7 +695,7 @@ class TransE:
             for i in range(batch_size):
                 # 1. 模型认为头部是对齐的
                 h1 = soft_positive_sample[i][0].item()
-                if self.combinationProbability[h1] >= 0.5:  # 如果可信
+                if self.combinationProbability[h1] >= 0.5 and h1 in self.correspondingEntity:  # 如果可信
                     # 希望 (e, a, v) (e', a, v) -> (e*, a, v) (e', a, v)
                     h1_cor = self.correspondingEntity[h1]  # 获取模型认为的对齐实体
                     soft_positive_sample[i][0] = h1_cor  # 替换为模型认为的对齐实体
@@ -775,7 +775,7 @@ class TransE:
             # 软对齐
             # 根据模型认为的对齐实体，修改 positive_sample，negative_sample，再训练一轮
             if self.model_is_able_to_predict_align_entities:
-                soft_positive_sample = self.soft_align(positive_sample, negative_sample, mode)
+                soft_positive_sample = self.soft_align(positive_sample, mode)
                 loss2 = self.model.train_step(self.model, self.optim,
                                               soft_positive_sample, negative_sample,
                                               subsampling_weight, mode, self.device)
