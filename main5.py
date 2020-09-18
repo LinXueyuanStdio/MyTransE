@@ -382,11 +382,11 @@ class Tester:
         # 80%训练集，20%测试集
         train_percent = 0.3
         train_max_idx = int(train_percent * len(self.seeds))
-        self.train_seeds = self.seeds[:train_max_idx]
-        self.test_seeds = self.seeds[train_max_idx + 1:]
+        self.train_seeds = self.seeds[:]
+        self.test_seeds = self.seeds[:]
         self.left_ids = []
         self.right_ids = []
-        for left_entity, right_entity in self.seeds:
+        for left_entity, right_entity in self.test_seeds:
             self.left_ids.append(left_entity)  # 对齐的左边的实体
             self.right_ids.append(right_entity)  # 对齐的右边的实体
 
@@ -784,14 +784,16 @@ class TransE:
                 summary_writer.add_scalar(tag='Loss/train', scalar_value=loss, global_step=step)
 
             if step > init_step and step % test_steps == 0:
+                logger.info("\n计算距离中")
                 left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
                 right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
                 sim = spatial.distance.cdist(left_vec, right_vec, metric='euclidean')
+                logger.info("计算距离完成")
                 try:
-                    logger.info("\n启动线程，获取模型认为的对齐实体")
+                    logger.info("启动线程，获取模型认为的对齐实体")
                     _thread.start_new_thread(self.do_combine, ("Thread of step-" + str(step), sim,))
                 except SystemExit:
-                    logger.error("\nError: 无法启动线程")
+                    logger.error("Error: 无法启动线程")
                 logger.info("属性消融实验")
                 hits = self.t.get_hits(left_vec, right_vec, sim)
                 hits_left = hits["left"]
