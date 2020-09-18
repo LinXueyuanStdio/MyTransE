@@ -703,14 +703,14 @@ class TransE:
 
     def do_combine(self, thread_name, sim):
         # sim[i, j] 表示在 Lvec 的实体 i 到 Rvec 的实体 j 的距离
-        logger.info("模型对齐中 " + thread_name)
+        logger.info(thread_name + " " + "模型对齐中")
         computing_time = time.time()
         # 1. 按距离排序
         self.distance2entitiesPair: List[Tuple[int, Tuple[int, int]]] = []
         filtered = np.where(sim <= self.combination_threshold)
         for i, j in zip(filtered[0], filtered[1]):
             self.distance2entitiesPair.append((sim[i, j], (self.t.left_ids[i], self.t.right_ids[j])))
-        logger.info("扁平化，用时 " + str(time.time() - computing_time))
+        logger.info(thread_name + " " + "扁平化，用时 " + str(time.time() - computing_time) + " 秒")
         # 2.初始化"模型认为两实体是对齐的"这件事的可信概率
         combinationProbability: List[float] = [0] * self.entity_count  # [0, 1)
         # 3.模型认为的对齐实体
@@ -737,15 +737,16 @@ class TransE:
             occupied.add(ent2)
             combinationProbability[ent1] = sigmoid(self.combination_threshold - dis)  # 必有 p > 0.5
             combinationProbability[ent2] = sigmoid(self.combination_threshold - dis)
-        logger.info("对齐了 " + str(len(self.model_think_align_entities)) + " 个实体，用时 " + str(time.time() - computing_time))
+        logger.info(thread_name + " "
+                    + "对齐了 " + str(len(self.model_think_align_entities)) + " 个实体，用时 "
+                    + str(time.time() - computing_time) + " 秒")
         self.combination_restriction += 1000
 
         self.model_is_able_to_predict_align_entities = False  # 上锁
         self.combinationProbability = combinationProbability
         self.correspondingEntity = correspondingEntity
         self.model_is_able_to_predict_align_entities = True  # 解锁
-        logger.info("model : I think " + str(len(self.model_think_align_entities)) + " entities are aligned!")
-        logger.info("模型对齐完成 " + thread_name + ", 用时 " + str(time.time() - computing_time))
+        logger.info(thread_name + " " + "模型对齐完成，用时 " + str(time.time() - computing_time) + " 秒")
 
     def run_train(self, need_to_load_checkpoint=True):
         logger.info("start training")
