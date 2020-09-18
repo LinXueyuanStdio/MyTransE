@@ -707,10 +707,9 @@ class TransE:
         computing_time = time.time()
         # 1. 按距离排序
         self.distance2entitiesPair: List[Tuple[int, Tuple[int, int]]] = []
-        entity_pair_count = len(self.t.left_ids)
-        for i in range(entity_pair_count):
-            for j in range(entity_pair_count):
-                self.distance2entitiesPair.append((sim[i, j], (self.t.left_ids[i], self.t.right_ids[j])))
+        filtered = np.where(sim <= self.combination_threshold)
+        for i, j in filtered:
+            self.distance2entitiesPair.append((sim[i, j], (self.t.left_ids[i], self.t.right_ids[j])))
         logger.info("扁平化，用时 " + str(time.time() - computing_time))
         # 2.初始化"模型认为两实体是对齐的"这件事的可信概率
         combinationProbability: List[float] = [0] * self.entity_count  # [0, 1)
