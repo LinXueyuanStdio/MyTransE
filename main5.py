@@ -744,7 +744,7 @@ class TransE:
         self.correspondingEntity = correspondingEntity
         self.model_is_able_to_predict_align_entities = True  # 解锁
         logger.info("model : I think " + str(len(self.model_think_align_entities)) + " entities are aligned!")
-        logger.info("线程运行完成 " + thread_name + ", 用时 " + str(computing_time - time.time()))
+        logger.info("线程运行完成 " + thread_name + ", 用时 " + str(time.time() - computing_time))
 
     def run_train(self, need_to_load_checkpoint=True):
         logger.info("start training")
@@ -790,8 +790,8 @@ class TransE:
                 left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
                 right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
                 sim = spatial.distance.cdist(left_vec, right_vec, metric='euclidean')
-                logger.info("计算距离完成，用时 " + str(computing_time - time.time()))
-                self.do_combine("Thread of step-" + str(step), sim)
+                logger.info("计算距离完成，用时 " + str(time.time() - computing_time))
+                self.do_combine("Thread-" + str(step), sim)
                 # try:
                 #     logger.info("启动线程，获取模型认为的对齐实体")
                 #     _thread.start_new_thread(self.do_combine, ("Thread of step-" + str(step), sim,))
@@ -841,8 +841,8 @@ class TransE:
 
 def train_model_for_fr_en():
     m = TransE(
-        checkpoint_path="./result/TransE2/ja_en/checkpoint.tar",
-        embedding_path="./result/TransE2/ja_en/ATentsembed.txt"
+        checkpoint_path="./result/TransE2/fr_en/checkpoint.tar",
+        embedding_path="./result/TransE2/fr_en/ATentsembed.txt"
     )
     m.init_data()
     # m.append_align_triple()
