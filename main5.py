@@ -708,7 +708,7 @@ class TransE:
         # 1. 按距离排序
         self.distance2entitiesPair: List[Tuple[int, Tuple[int, int]]] = []
         filtered = np.where(sim <= self.combination_threshold)
-        for i, j in filtered:
+        for i, j in zip(filtered[0], filtered[1]):
             self.distance2entitiesPair.append((sim[i, j], (self.t.left_ids[i], self.t.right_ids[j])))
         logger.info("扁平化，用时 " + str(time.time() - computing_time))
         # 2.初始化"模型认为两实体是对齐的"这件事的可信概率
