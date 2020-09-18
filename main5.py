@@ -698,7 +698,8 @@ class TransE:
                     soft_positive_sample[i][0] = h1_cor  # 替换为模型认为的对齐实体
         return soft_positive_sample
 
-    def do_combine(self):
+    def do_combine(self, thread_name):
+        logger.info("线程运行中 " + thread_name)
         # 1. 按距离排序
         left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
         right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
@@ -741,6 +742,7 @@ class TransE:
         self.correspondingEntity = correspondingEntity
         self.model_is_able_to_predict_align_entities = True  # 解锁
         logger.info("model : I think " + str(len(self.model_think_align_entities)) + " entities are aligned!")
+        logger.info("线程运行完成 " + thread_name)
 
     def run_train(self, need_to_load_checkpoint=True):
         logger.info("start training")
@@ -759,8 +761,6 @@ class TransE:
         progbar = Progbar(max_step=total_steps - init_step)
         start_time = time.time()
         for step in range(init_step, total_steps):
-            if step > 999 and step % 500 == 0:
-                self.do_combine()
             positive_sample, negative_sample, subsampling_weight, mode = next(self.train_iterator)
             loss = self.model.train_step(self.model, self.optim,
                                          positive_sample, negative_sample,
