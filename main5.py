@@ -711,7 +711,7 @@ class TransE:
         for i in range(entity_pair_count):
             for j in range(entity_pair_count):
                 self.distance2entitiesPair.append((sim[i, j], (self.t.left_ids[i], self.t.right_ids[j])))
-        sorted(self.distance2entitiesPair, key=lambda it: it[0])
+        logger.info("扁平化，用时 " + str(time.time() - computing_time))
         # 2.初始化"模型认为两实体是对齐的"这件事的可信概率
         combinationProbability: List[float] = [0] * self.entity_count  # [0, 1)
         # 3.模型认为的对齐实体
@@ -723,10 +723,14 @@ class TransE:
         sigmoid = lambda x: 1.0 / (1.0 + exp(-x))
         for dis, (ent1, ent2) in self.distance2entitiesPair:
             if dis > self.combination_threshold:
-                break
-            # dis <= self.combination_threshold 距离在可信范围内
+                # 超过可信范围，不可信
+                continue
+            # 距离在可信范围内
             if ent1 in occupied or ent2 in occupied:
                 continue
+            if combination_counter >= self.combination_restriction:
+                break
+            combination_counter += 1
             self.correspondingEntity[ent1] = ent2
             self.correspondingEntity[ent2] = ent1
             self.model_think_align_entities.append((ent1, ent2))
@@ -734,9 +738,7 @@ class TransE:
             occupied.add(ent2)
             combinationProbability[ent1] = sigmoid(self.combination_threshold - dis)  # 必有 p > 0.5
             combinationProbability[ent2] = sigmoid(self.combination_threshold - dis)
-            if combination_counter >= self.combination_restriction:
-                break
-            combination_counter += 1
+        logger.info("对齐了 " + str(len(self.model_think_align_entities)) + " 个实体，用时 " + str(time.time() - computing_time))
         self.combination_restriction += 1000
 
         self.model_is_able_to_predict_align_entities = False  # 上锁
