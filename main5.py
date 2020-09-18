@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import _thread
 import sys
 import time
 from math import exp
@@ -707,10 +708,10 @@ class TransE:
             for j in range(entity_pair_count):
                 self.distance2entitiesPair.append((sim[i, j], (self.t.left_ids[i], self.t.right_ids[j])))
         sorted(self.distance2entitiesPair, key=lambda it: it[0])
-        # 初始化"模型认为两实体是对齐的"这件事的可信概率
-        self.combinationProbability: List[float] = [0] * self.entity_count  # [0, 1)
-        # 模型认为的对齐实体
-        self.correspondingEntity = {}
+        # 2.初始化"模型认为两实体是对齐的"这件事的可信概率
+        combinationProbability: List[float] = [0] * self.entity_count  # [0, 1)
+        # 3.模型认为的对齐实体
+        correspondingEntity = {}
         self.model_think_align_entities = []
 
         occupied: Set[int] = set()
@@ -727,12 +728,17 @@ class TransE:
             self.model_think_align_entities.append((ent1, ent2))
             occupied.add(ent1)
             occupied.add(ent2)
-            self.combinationProbability[ent1] = sigmoid(self.combination_threshold - dis)  # 必有 p > 0.5
-            self.combinationProbability[ent2] = sigmoid(self.combination_threshold - dis)
+            combinationProbability[ent1] = sigmoid(self.combination_threshold - dis)  # 必有 p > 0.5
+            combinationProbability[ent2] = sigmoid(self.combination_threshold - dis)
             if combination_counter >= self.combination_restriction:
                 break
             combination_counter += 1
         self.combination_restriction += 1000
+
+        self.model_is_able_to_predict_align_entities = False  # 上锁
+        self.combinationProbability = combinationProbability
+        self.correspondingEntity = correspondingEntity
+        self.model_is_able_to_predict_align_entities = True  # 解锁
         logger.info("model : I think " + str(len(self.model_think_align_entities)) + " entities are aligned!")
 
     def run_train(self, need_to_load_checkpoint=True):
@@ -751,34 +757,37 @@ class TransE:
         summary_writer = tensorboard.SummaryWriter(log_dir=self.tensorboard_log_dir)
         progbar = Progbar(max_step=total_steps - init_step)
         start_time = time.time()
-        model_is_able_to_predict_align_entities = False
         for step in range(init_step, total_steps):
             if step > 999 and step % 500 == 0:
-                model_is_able_to_predict_align_entities = True
                 self.do_combine()
             positive_sample, negative_sample, subsampling_weight, mode = next(self.train_iterator)
             loss = self.model.train_step(self.model, self.optim,
-                                          positive_sample, negative_sample,
-                                          subsampling_weight, mode, self.device)
+                                         positive_sample, negative_sample,
+                                         subsampling_weight, mode, self.device)
             # 软对齐
             # 根据模型认为的对齐实体，修改 positive_sample，negative_sample，再训练一轮
-            if model_is_able_to_predict_align_entities:
+            if self.model_is_able_to_predict_align_entities:
                 soft_positive_sample = self.soft_align(positive_sample, negative_sample, mode)
                 loss2 = self.model.train_step(self.model, self.optim,
                                               soft_positive_sample, negative_sample,
                                               subsampling_weight, mode, self.device)
                 loss = (loss + loss2) / 2
 
-            progbar.update(step - init_step, [
-                ("step", step - init_step),
+            progbar.update(step - init_step + 1, [
                 ("loss", loss),
-                ("cost", round((time.time() - start_time)))
+                ("cost", round((time.time() - start_time))),
+                ("aligned", len(self.model_think_align_entities))
             ])
             if self.visualize:
                 summary_writer.add_scalar(tag='Loss/train', scalar_value=loss, global_step=step)
 
             if step > init_step and step % test_steps == 0:
-                logger.info("\n属性消融实验")
+                try:
+                    logger.info("\n启动线程，获取模型认为的对齐实体")
+                    _thread.start_new_thread(self.do_combine, ("Thread of step-" + str(step),))
+                except SystemExit:
+                    logger.error("\nError: 无法启动线程")
+                logger.info("属性消融实验")
                 left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
                 right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
                 hits = self.t.get_hits(left_vec, right_vec)
