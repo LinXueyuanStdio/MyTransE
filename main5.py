@@ -650,6 +650,7 @@ class TransE:
         self.combinationProbability: List[float] = [0] * self.entity_count  # [0, 1)
         self.correspondingEntity = {}
         self.model_think_align_entities = []
+        self.model_is_able_to_predict_align_entities = False
 
     def soft_align(self, positive_sample, negative_sample, mode='single'):
         batch_size = positive_sample.size()[0]
@@ -817,19 +818,18 @@ class TransE:
                     save_checkpoint(self.model, self.optim, 1, step, score, loss, self.checkpoint_path)
                     save_entity_embedding_list(self.model, self.embedding_path)
 
-
-def run_test(self):
-    load_checkpoint(self.model, self.optim, self.checkpoint_path)
-    logger.info("\n属性消融实验")
-    left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
-    right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
-    hits = self.t.get_hits(left_vec, right_vec)
-    hits_left = hits["left"]
-    hits_right = hits["right"]
-    left_hits_10 = hits_left[2][1]
-    right_hits_10 = hits_right[2][1]
-    score = (left_hits_10 + right_hits_10) / 2
-    logger.info("score = " + str(score))
+    def run_test(self):
+        load_checkpoint(self.model, self.optim, self.checkpoint_path)
+        logger.info("\n属性消融实验")
+        left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
+        right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
+        hits = self.t.get_hits(left_vec, right_vec)
+        hits_left = hits["left"]
+        hits_right = hits["right"]
+        left_hits_10 = hits_left[2][1]
+        right_hits_10 = hits_right[2][1]
+        score = (left_hits_10 + right_hits_10) / 2
+        logger.info("score = " + str(score))
 
 
 def train_model_for_fr_en():
