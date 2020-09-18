@@ -159,10 +159,11 @@ print('language:' + lang)
 # test.get_hits()
 
 # 权重策略
-# ww = 0.8
-# print('w='+str(ww))
+ww = 0.2
+print('w='+str(ww))
 # test.EAlinkstrategy_weight('data/'+lang+'/RTentsembed.pkl','data/'+lang+'/ATentsembed.txt', ww) #连接策略
-# test.get_hits()
+test.EAlinkstrategy_weight('2.pkl','ATentsembed.txt', ww) #连接策略
+test.get_hits()
 
 # 迭代策略
 # test.EAlinkstrategy_iteration('results/'+'emb_it_'+lang+'.pkl')
@@ -178,8 +179,9 @@ print('language:' + lang)
 
 # print("属性消融实验")
 # test.XRA('data/'+lang+'/ATentsembed.txt')
-test.XRA('res/entity2vec.bern')
-test.get_hits()
+# test.XRA('./ATentsembed.txt')
+#test.XRA('res/entity2vec.bern')
+# test.get_hits()
 
 # 迭代权重策略
 # test.EAlinkstrategy_iteration('results/'+'emb_itwe_0.5_'+lang+'.pkl')
