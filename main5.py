@@ -710,10 +710,11 @@ class TransE:
         filtered = np.where(sim <= self.combination_threshold)
         for i, j in zip(filtered[0], filtered[1]):
             self.distance2entitiesPair.append((sim[i, j], (self.t.left_ids[i], self.t.right_ids[j])))
+        filter_time = time.time()
         logger.info(thread_name + " " + "距离小于 "
                     + str(self.combination_threshold) + " 的实体对有 "
                     + str(len(self.distance2entitiesPair)) + " 个")
-        logger.info(thread_name + " " + "扁平化，用时 " + str(int(time.time() - computing_time)) + " 秒")
+        logger.info(thread_name + " " + "扁平化，用时 " + str(int(filter_time - computing_time)) + " 秒")
         # 2.初始化"模型认为两实体是对齐的"这件事的可信概率
         combinationProbability: List[float] = [0] * self.entity_count  # [0, 1)
         # 3.模型认为的对齐实体
@@ -740,17 +741,15 @@ class TransE:
             occupied.add(ent2)
             combinationProbability[ent1] = sigmoid(self.combination_threshold - dis)  # 必有 p > 0.5
             combinationProbability[ent2] = sigmoid(self.combination_threshold - dis)
-        logger.info(thread_name + " " + "对齐了 "
-                    + str(len(self.model_think_align_entities)) + " 个实体，用时 "
-                    + str(int(time.time() - computing_time)) + " 秒")
+        logger.info(thread_name + " " + "对齐了 " + str(len(self.model_think_align_entities)) + " 个实体")
         self.combination_restriction += 1000
 
         self.model_is_able_to_predict_align_entities = False  # 上锁
         self.combinationProbability = combinationProbability
         self.correspondingEntity = correspondingEntity
         self.model_is_able_to_predict_align_entities = True  # 解锁
-        logger.info(thread_name + " " + "模型对齐完成，用时 "
-                    + str(int(time.time() - computing_time)) + " 秒")
+        align_time = time.time()
+        logger.info(thread_name + " " + "模型对齐完成，用时 " + str(int(align_time - filter_time)) + " 秒")
 
     def run_train(self, need_to_load_checkpoint=True):
         logger.info("start training")
