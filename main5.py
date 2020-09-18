@@ -704,6 +704,7 @@ class TransE:
     def do_combine(self, thread_name, sim):
         # sim[i, j] 表示在 Lvec 的实体 i 到 Rvec 的实体 j 的距离
         logger.info("线程运行中 " + thread_name)
+        computing_time = time.time()
         # 1. 按距离排序
         self.distance2entitiesPair: List[Tuple[int, Tuple[int, int]]] = []
         entity_pair_count = len(self.t.left_ids)
@@ -743,7 +744,7 @@ class TransE:
         self.correspondingEntity = correspondingEntity
         self.model_is_able_to_predict_align_entities = True  # 解锁
         logger.info("model : I think " + str(len(self.model_think_align_entities)) + " entities are aligned!")
-        logger.info("线程运行完成 " + thread_name)
+        logger.info("线程运行完成 " + thread_name + ", 用时 " + str(computing_time - time.time()))
 
     def run_train(self, need_to_load_checkpoint=True):
         logger.info("start training")
@@ -785,10 +786,11 @@ class TransE:
 
             if step > init_step and step % test_steps == 0:
                 logger.info("\n计算距离中")
+                computing_time = time.time()
                 left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
                 right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
                 sim = spatial.distance.cdist(left_vec, right_vec, metric='euclidean')
-                logger.info("计算距离完成")
+                logger.info("计算距离完成，用时 " + str(computing_time - time.time()))
                 try:
                     logger.info("启动线程，获取模型认为的对齐实体")
                     _thread.start_new_thread(self.do_combine, ("Thread of step-" + str(step), sim,))
