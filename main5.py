@@ -419,8 +419,11 @@ class Tester:
         Rvec = np.array([self.linkEmbedding[e2] for e1, e2 in self.test_seeds])
         return self.get_hits(Lvec, Rvec, top_k)
 
-    def get_hits(self, Lvec, Rvec, top_k=(1, 10, 50, 100)):
+    def get_hits2(self, Lvec, Rvec, top_k=(1, 10, 50, 100)):
         sim = spatial.distance.cdist(Lvec, Rvec, metric='cityblock')
+        return self.get_hits(Lvec, Rvec, sim, top_k)
+
+    def get_hits(self, Lvec, Rvec, sim, top_k=(1, 10, 50, 100)):
         # Lvec (m, d), Rvec (m, d)
         # Lvec和Rvec分别是对齐的左右实体的嵌入组成的列表，d是嵌入维度，m是实体个数
         # sim=distance(Lvec, Rvec) (m, m)
@@ -698,12 +701,10 @@ class TransE:
                     soft_positive_sample[i][0] = h1_cor  # 替换为模型认为的对齐实体
         return soft_positive_sample
 
-    def do_combine(self, thread_name):
+    def do_combine(self, thread_name, sim):
+        # sim[i, j] 表示在 Lvec 的实体 i 到 Rvec 的实体 j 的距离
         logger.info("线程运行中 " + thread_name)
         # 1. 按距离排序
-        left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
-        right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
-        sim = spatial.distance.cdist(left_vec, right_vec, metric='euclidean')
         self.distance2entitiesPair: List[Tuple[int, Tuple[int, int]]] = []
         entity_pair_count = len(self.t.left_ids)
         for i in range(entity_pair_count):
@@ -783,15 +784,16 @@ class TransE:
                 summary_writer.add_scalar(tag='Loss/train', scalar_value=loss, global_step=step)
 
             if step > init_step and step % test_steps == 0:
+                left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
+                right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
+                sim = spatial.distance.cdist(left_vec, right_vec, metric='euclidean')
                 try:
                     logger.info("\n启动线程，获取模型认为的对齐实体")
-                    _thread.start_new_thread(self.do_combine, ("Thread of step-" + str(step),))
+                    _thread.start_new_thread(self.do_combine, ("Thread of step-" + str(step), sim,))
                 except SystemExit:
                     logger.error("\nError: 无法启动线程")
                 logger.info("属性消融实验")
-                left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
-                right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
-                hits = self.t.get_hits(left_vec, right_vec)
+                hits = self.t.get_hits(left_vec, right_vec, sim)
                 hits_left = hits["left"]
                 hits_right = hits["right"]
                 left_hits_10 = hits_left[2][1]
