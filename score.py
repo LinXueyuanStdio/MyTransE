@@ -7,7 +7,7 @@ from scipy import spatial
 
 # lang = sys.argv[1]
 # w = float(sys.argv[2])
-lang = 'ja_en'
+lang = 'fr_en'
 w = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]  #
 
 

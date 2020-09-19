@@ -1,0 +1,143 @@
+PS C:\Users\lxy\Documents\GitHub\MyTransE> C:\Users\lxy\app\py36\python.exe  .\score.py
+language:ja_en
+拼接策略
+For each left:
+Hits@1: 79.66%
+Hits@10: 90.17%
+Hits@50: 94.32%
+Hits@100: 95.81%
+For each right:
+Hits@1: 79.26%
+Hits@10: 90.03%
+Hits@50: 94.22%
+Hits@100: 95.55%
+权重策略 w=0.1
+complete weighting
+For each left:
+Hits@1: 48.86%
+Hits@10: 67.60%
+Hits@50: 78.94%
+Hits@100: 83.32%
+For each right:
+Hits@1: 48.82%
+Hits@10: 68.45%
+Hits@50: 79.44%
+Hits@100: 84.11%
+权重策略 w=0.2
+complete weighting
+For each left:
+Hits@1: 49.50%
+Hits@10: 68.08%
+Hits@50: 79.36%
+Hits@100: 83.72%
+For each right:
+Hits@1: 49.27%
+Hits@10: 68.77%
+Hits@50: 79.82%
+Hits@100: 84.46%
+权重策略 w=0.3
+complete weighting
+For each left:
+Hits@1: 50.45%
+Hits@10: 69.21%
+Hits@50: 80.26%
+Hits@100: 84.28%
+For each right:
+Hits@1: 50.52%
+Hits@10: 69.72%
+Hits@50: 80.50%
+Hits@100: 84.98%
+权重策略 w=0.4
+complete weighting
+For each left:
+Hits@1: 52.12%
+Hits@10: 71.00%
+Hits@50: 81.41%
+Hits@100: 85.44%
+For each right:
+Hits@1: 52.77%
+Hits@10: 71.42%
+Hits@50: 81.98%
+Hits@100: 86.12%
+权重策略 w=0.5
+complete weighting
+For each left:
+Hits@1: 55.86%
+Hits@10: 73.99%
+Hits@50: 83.53%
+Hits@100: 87.14%
+For each right:
+Hits@1: 56.12%
+Hits@10: 74.09%
+Hits@50: 84.19%
+Hits@100: 88.03%
+权重策略 w=0.6
+complete weighting
+For each left:
+Hits@1: 61.49%
+Hits@10: 77.87%
+Hits@50: 86.45%
+Hits@100: 89.91%
+For each right:
+Hits@1: 61.50%
+Hits@10: 77.83%
+Hits@50: 86.93%
+Hits@100: 90.36%
+权重策略 w=0.7
+complete weighting
+For each left:
+Hits@1: 68.52%
+Hits@10: 82.45%
+Hits@50: 89.56%
+Hits@100: 92.03%
+For each right:
+Hits@1: 67.55%
+Hits@10: 81.86%
+Hits@50: 88.88%
+Hits@100: 91.39%
+权重策略 w=0.8
+complete weighting
+For each left:
+Hits@1: 71.09%
+Hits@10: 85.04%
+Hits@50: 89.90%
+Hits@100: 91.50%
+For each right:
+Hits@1: 68.54%
+Hits@10: 82.22%
+Hits@50: 87.18%
+Hits@100: 89.28%
+权重策略 w=0.9
+complete weighting
+For each left:
+Hits@1: 58.86%
+Hits@10: 79.93%
+Hits@50: 86.27%
+Hits@100: 88.02%
+For each right:
+Hits@1: 55.14%
+Hits@10: 76.01%
+Hits@50: 82.56%
+Hits@100: 84.54%
+关系消融实验
+For each left:
+Hits@1: 40.28%
+Hits@10: 73.31%
+Hits@50: 82.80%
+Hits@100: 85.24%
+For each right:
+Hits@1: 38.22%
+Hits@10: 69.26%
+Hits@50: 78.93%
+Hits@100: 81.46%
+属性消融实验
+For each left:
+Hits@1: 48.68%
+Hits@10: 67.51%
+Hits@50: 78.81%
+Hits@100: 83.24%
+For each right:
+Hits@1: 48.82%
+Hits@10: 68.21%
+Hits@50: 79.23%
+Hits@100: 84.05%
