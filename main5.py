@@ -789,7 +789,7 @@ class TransE:
             if self.visualize:
                 summary_writer.add_scalar(tag='Loss/train', scalar_value=loss, global_step=step)
 
-            if step > init_step and step % test_steps == 0:
+            if step == 12000 or step == 13000 or step == 14000:
                 logger.info("\n计算距离中")
                 computing_time = time.time()
                 left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
