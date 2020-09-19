@@ -754,7 +754,7 @@ class TransE:
     def run_train(self, need_to_load_checkpoint=True):
         logger.info("start training")
         init_step = 1
-        total_steps = 20001
+        total_steps = 200001
         test_steps = 5000
         last_loss = 100
         score = 0
