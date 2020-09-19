@@ -754,8 +754,8 @@ class TransE:
     def run_train(self, need_to_load_checkpoint=True):
         logger.info("start training")
         init_step = 1
-        total_steps = 500001
-        test_steps = 10000
+        total_steps = 20001
+        test_steps = 5000
         last_loss = 100
         score = 0
         last_score = score
@@ -795,8 +795,8 @@ class TransE:
                 left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
                 right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
                 sim = spatial.distance.cdist(left_vec, right_vec, metric='euclidean')
-                logger.info("计算距离完成，用时 " + str(int(time.time() - computing_time)))
-                self.do_combine("Thread-" + str(step), sim)
+                logger.info("计算距离完成，用时 " + str(int(time.time() - computing_time)) + " 秒")
+                # self.do_combine("Thread-" + str(step), sim)
                 # try:
                 #     logger.info("启动线程，获取模型认为的对齐实体")
                 #     _thread.start_new_thread(self.do_combine, ("Thread of step-" + str(step), sim,))
