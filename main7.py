@@ -855,7 +855,7 @@ def train_model_for_fr_en(result_path="./result/TransE2/fr_en/"):
                tensorboard_log_dir=result_path + "log/"
                )
     m.init_data()
-    # m.append_align_triple()
+    m.append_align_triple()
     m.init_soft_align()
     m.init_dataset()
     m.init_model()
