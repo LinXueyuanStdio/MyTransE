@@ -906,5 +906,5 @@ def test_model():
 
 
 # train_model_for_fr_en()
-train_model_for_ja_en()
-# train_model_for_zh_en()
+# train_model_for_ja_en()
+train_model_for_zh_en()
