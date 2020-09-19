@@ -847,7 +847,8 @@ class TransE:
 def train_model_for_fr_en():
     m = TransE(
         checkpoint_path="./result/TransE2/fr_en/checkpoint.tar",
-        embedding_path="./result/TransE2/fr_en/ATentsembed.txt"
+        embedding_path="./result/TransE2/fr_en/ATentsembed.txt",
+        tensorboard_log_dir="./result/TransE2/fr_en/log/"
     )
     m.init_data()
     # m.append_align_triple()
@@ -865,11 +866,12 @@ def train_model_for_ja_en():
                all_value_file="data/ja_en/att_value2id_all",
                all_triple_file="data/ja_en/att_triple_all",
 
-               checkpoint_path="./result/TransE/ja_en/checkpoint.tar",
-               embedding_path="./result/TransE/ja_en/ATentsembed.txt",
-               tensorboard_log_dir="./result/TransE/ja_en/log/")
+               checkpoint_path="./result/TransE2/ja_en/checkpoint.tar",
+               embedding_path="./result/TransE2/ja_en/ATentsembed.txt",
+               tensorboard_log_dir="./result/TransE2/ja_en/log/")
     m.init_data()
-    m.append_align_triple()
+    # m.append_align_triple()
+    m.init_soft_align()
     m.init_dataset()
     m.init_model()
     m.init_optimizer()
@@ -883,11 +885,12 @@ def train_model_for_zh_en():
                all_value_file="data/zh_en/att_value2id_all",
                all_triple_file="data/zh_en/att_triple_all",
 
-               checkpoint_path="./result/TransE/zh_en/checkpoint.tar",
-               embedding_path="./result/TransE/zh_en/ATentsembed.txt",
-               tensorboard_log_dir="./result/TransE/zh_en/log/")
+               checkpoint_path="./result/TransE2/zh_en/checkpoint.tar",
+               embedding_path="./result/TransE2/zh_en/ATentsembed.txt",
+               tensorboard_log_dir="./result/TransE2/zh_en/log/")
     m.init_data()
-    m.append_align_triple()
+    # m.append_align_triple()
+    m.init_soft_align()
     m.init_dataset()
     m.init_model()
     m.init_optimizer()
@@ -902,6 +905,6 @@ def test_model():
     m.run_test()
 
 
-train_model_for_fr_en()
-# train_model_for_ja_en()
+# train_model_for_fr_en()
+train_model_for_ja_en()
 # train_model_for_zh_en()
