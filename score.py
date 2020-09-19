@@ -7,7 +7,7 @@ from scipy import spatial
 
 # lang = sys.argv[1]
 # w = float(sys.argv[2])
-lang = 'fr_en'
+lang = 'ja_en'
 w = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]  #
 
 
@@ -37,7 +37,7 @@ class EAstrategy:
                 for i in range(2):
                     x.append(int(th[i]))
                 ret.append(tuple(x))
-            length = int(0.3*len(ret))
+            length = int(0.3 * len(ret))
             self.seeds = ret[length:]
 
     def read_KG1_and_KG2_list(self, kg1file, kg2file):
@@ -162,8 +162,8 @@ test.read_KG1_and_KG2_list('data/' + lang + '/ent_ids_1', 'data/' + lang + '/ent
 print('language:' + lang)
 print('拼接策略')
 # 拼接策略
-# test.EAlinkstrategy('data/' + lang + '/RTentsembed.pkl', 'data/' + lang + '/ATentsembed.txt')  # 连接策略
-test.EAlinkstrategy('2.pkl', 'ATentsembed.txt')  # 连接策略
+test.EAlinkstrategy('result/' + lang + '/RTentsembed.pkl', 'result/' + lang + '/ATentsembed.txt')  # 连接策略
+# test.EAlinkstrategy('2.pkl', './result/ja_en/ATentsembed.txt')  # 连接策略
 test.get_hits()
 
 # 权重策略
@@ -171,7 +171,7 @@ test.get_hits()
 # # test.EAlinkstrategy_weight('data/'+lang+'/RTentsembed.pkl','data/'+lang+'/ATentsembed.txt', ww) #连接策略
 for ww in range(0, 10, 1):
     print('权重策略 w=' + str(ww))
-    test.EAlinkstrategy_weight('2.pkl', 'ATentsembed.txt', ww / 10)  # 连接策略
+    test.EAlinkstrategy_weight('result/' + lang + '/RTentsembed.pkl', 'result/' + lang + '/ATentsembed.txt', ww)  # 连接策略
     test.get_hits()
 
 # 迭代策略
@@ -183,13 +183,12 @@ for ww in range(0, 10, 1):
 
 # 消融实验
 print("关系消融实验")
-# test.XRR('data/' + lang + '/RTentsembed.pkl')
-test.XRR('2.pkl')
+test.XRR('data/' + lang + '/RTentsembed.pkl')
 test.get_hits()
 
 print("属性消融实验")
-# test.XRA('data/'+lang+'/ATentsembed.txt')
-test.XRA('./ATentsembed.txt')
+test.XRA('result/' + lang + '/ATentsembed.txt')
+# test.XRA('./result/ja_en/ATentsembed.txt')
 # test.XRA('res/entity2vec.bern')
 test.get_hits()
 
