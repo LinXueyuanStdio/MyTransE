@@ -707,7 +707,9 @@ class TransE:
         computing_time = time.time()
         # 1. 按距离排序
         self.distance2entitiesPair: List[Tuple[int, Tuple[int, int]]] = []
+        print(sim)
         filtered = np.where(sim == np.amin(sim, axis=1))
+        print(filtered)
         for i, j in zip(filtered[0], filtered[1]):
             self.distance2entitiesPair.append((sim[i, j], (self.t.left_ids[i], self.t.right_ids[j])))
         filter_time = time.time()
