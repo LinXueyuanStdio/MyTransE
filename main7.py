@@ -632,7 +632,7 @@ class TransE:
 
     def init_model(self):
         self.model = KGEModel(
-            self.t.seeds,  # 所有seed
+            self.t.train_seeds,
             nentity=self.entity_count,
             nrelation=self.attr_count,
             nvalue=self.value_count,
@@ -648,7 +648,7 @@ class TransE:
 
     def init_soft_align(self):
         self.combination_threshold = 3  # 小于这个距离则模型认为已对齐
-        self.combination_restriction = 5000  # 模型认为对齐的实体对的个数
+        self.combination_restriction = 50000  # 模型认为对齐的实体对的个数
         self.distance2entitiesPair: List[Tuple[int, Tuple[int, int]]] = []
         self.combinationProbability: List[float] = [0] * self.entity_count  # [0, 1)
         self.correspondingEntity = {}
@@ -711,9 +711,7 @@ class TransE:
         for i, j in zip(filtered[0], filtered[1]):
             self.distance2entitiesPair.append((sim[i, j], (self.t.left_ids[i], self.t.right_ids[j])))
         filter_time = time.time()
-        logger.info(thread_name + " " + "距离小于 "
-                    + str(self.combination_threshold) + " 的实体对有 "
-                    + str(len(self.distance2entitiesPair)) + " 个")
+        logger.info(thread_name + " " + "模型认为的实体对有 " + str(len(self.distance2entitiesPair)) + " 个")
         logger.info(thread_name + " " + "扁平化，用时 " + str(int(filter_time - computing_time)) + " 秒")
         # 2.初始化"模型认为两实体是对齐的"这件事的可信概率
         combinationProbability: List[float] = [0] * self.entity_count  # [0, 1)
