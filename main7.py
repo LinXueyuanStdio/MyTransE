@@ -612,6 +612,7 @@ class TransE:
 
     def append_align_triple(self):
         self.train_triples = append_align_triple(self.train_triples, self.t.train_seeds)
+        logger.info("triple: " + str(len(self.train_triples)))
 
     def init_dataset(self):
         train_dataloader_head = DataLoader(
@@ -708,11 +709,17 @@ class TransE:
         # 1. 按距离排序
         self.distance2entitiesPair: List[Tuple[int, Tuple[int, int]]] = []
         filtered = np.argmin(sim, axis=1)
+        true_pair_count = 0
         for i in range(filtered.shape[0]):
             j = filtered[i]
+            if i == j:
+                true_pair_count += 1
             self.distance2entitiesPair.append((sim[i, j], (self.t.left_ids[i], self.t.right_ids[j])))
         filter_time = time.time()
         logger.info(thread_name + " " + "模型认为的实体对有 " + str(len(self.distance2entitiesPair)) + " 个")
+        logger.info(thread_name + " " + "这些实体对里，正确的有 "
+                    + str(true_pair_count) + " 个，正确率 "
+                    + str(true_pair_count / len(self.distance2entitiesPair) * 100) + "%")
         logger.info(thread_name + " " + "扁平化，用时 " + str(int(filter_time - computing_time)) + " 秒")
         # 2.初始化"模型认为两实体是对齐的"这件事的可信概率
         combinationProbability: List[float] = [0] * self.entity_count  # [0, 1)
