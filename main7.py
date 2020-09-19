@@ -716,11 +716,7 @@ class TransE:
                 true_pair_count += 1
             self.distance2entitiesPair.append((sim[i, j], (self.t.left_ids[i], self.t.right_ids[j])))
         filter_time = time.time()
-        logger.info(thread_name + " " + "模型认为的实体对有 " + str(len(self.distance2entitiesPair)) + " 个")
-        logger.info(thread_name + " " + "这些实体对里，正确的有 "
-                    + str(true_pair_count) + " 个，正确率 "
-                    + str(true_pair_count / len(self.distance2entitiesPair) * 100) + "%")
-        logger.info(thread_name + " " + "扁平化，用时 " + str(int(filter_time - computing_time)) + " 秒")
+        logger.info(thread_name + " " + "实体对有 " + str(len(self.distance2entitiesPair)) + " 个")
         # 2.初始化"模型认为两实体是对齐的"这件事的可信概率
         combinationProbability: List[float] = [0] * self.entity_count  # [0, 1)
         # 3.模型认为的对齐实体
@@ -748,6 +744,9 @@ class TransE:
             combinationProbability[ent1] = sigmoid(self.combination_threshold - dis)  # 必有 p > 0.5
             combinationProbability[ent2] = sigmoid(self.combination_threshold - dis)
         logger.info(thread_name + " " + "对齐了 " + str(len(self.model_think_align_entities)) + " 个实体")
+        logger.info(thread_name + " " + "这些实体对里，正确的有 "
+                    + str(true_pair_count) + " 个，正确率 "
+                    + str(true_pair_count / len(self.distance2entitiesPair) * 100) + "%")
         self.combination_restriction += 1000
 
         self.model_is_able_to_predict_align_entities = False  # 上锁
