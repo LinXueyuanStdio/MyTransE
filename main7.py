@@ -707,10 +707,9 @@ class TransE:
         computing_time = time.time()
         # 1. 按距离排序
         self.distance2entitiesPair: List[Tuple[int, Tuple[int, int]]] = []
-        print(sim)
-        filtered = np.where(sim == np.amin(sim, axis=1))
-        print(filtered)
-        for i, j in zip(filtered[0], filtered[1]):
+        filtered = np.argmin(sim, axis=1)
+        for i in range(filtered.shape[0]):
+            j = filtered[i]
             self.distance2entitiesPair.append((sim[i, j], (self.t.left_ids[i], self.t.right_ids[j])))
         filter_time = time.time()
         logger.info(thread_name + " " + "模型认为的实体对有 " + str(len(self.distance2entitiesPair)) + " 个")
