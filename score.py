@@ -169,7 +169,7 @@ test.get_hits()
 # 权重策略
 # ww = 0.8
 # # test.EAlinkstrategy_weight('data/'+lang+'/RTentsembed.pkl','data/'+lang+'/ATentsembed.txt', ww) #连接策略
-for ww in range(0, 10, 1):
+for ww in w:
     print('权重策略 w=' + str(ww))
     test.EAlinkstrategy_weight('result/' + lang + '/RTentsembed.pkl', 'result/' + lang + '/ATentsembed.txt', ww)  # 连接策略
     test.get_hits()
@@ -183,7 +183,7 @@ for ww in range(0, 10, 1):
 
 # 消融实验
 print("关系消融实验")
-test.XRR('data/' + lang + '/RTentsembed.pkl')
+test.XRR('result/' + lang + '/RTentsembed.pkl')
 test.get_hits()
 
 print("属性消融实验")
