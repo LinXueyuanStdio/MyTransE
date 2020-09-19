@@ -5,20 +5,20 @@ import numpy as np
 import sys
 from scipy import spatial
 
-
 # lang = sys.argv[1]
 # w = float(sys.argv[2])
 lang = 'fr_en'
-w = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9] #
+w = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]  #
+
 
 class EAstrategy:
     seeds = []
-    linkEmbedding=[]
-    kg1E=[]
-    kg2E=[]
-    EA_results={}
+    linkEmbedding = []
+    kg1E = []
+    kg2E = []
+    EA_results = {}
 
-    def read_EA_list(self,EAfile):
+    def read_EA_list(self, EAfile):
         # with open(EAfile,'r',encoding='utf-8') as r:
         #     lines=r.readlines()
         # for line in lines:
@@ -37,21 +37,23 @@ class EAstrategy:
                 for i in range(2):
                     x.append(int(th[i]))
                 ret.append(tuple(x))
-            self.seeds = ret
+            length = int(0.3*len(ret))
+            self.seeds = ret[length:]
 
-    def read_KG1_and_KG2_list(self,kg1file,kg2file):
-        with open(kg1file,'r',encoding='utf-8') as r:
-            kg1lines=r.readlines()
-        with open(kg2file,'r',encoding='utf-8') as r:
-            kg2lines=r.readlines()
+    def read_KG1_and_KG2_list(self, kg1file, kg2file):
+        with open(kg1file, 'r', encoding='utf-8') as r:
+            kg1lines = r.readlines()
+        with open(kg2file, 'r', encoding='utf-8') as r:
+            kg2lines = r.readlines()
         for line in kg1lines:
-            line=line.strip()
+            line = line.strip()
             self.kg1E.append(line.split()[0])
         for line in kg2lines:
             line = line.strip()
             self.kg2E.append(line.split()[0])
 
     def XRR(self, RTEembeddingfile):
+        self.linkEmbedding = []
         RTElines = pickle.load(open(RTEembeddingfile, 'rb'), encoding='utf-8')
         entlength = len(RTElines)
         for i in range(entlength):
@@ -60,6 +62,7 @@ class EAstrategy:
             self.linkEmbedding.append(rline_list)
 
     def XRA(self, ATEembeddingfile):
+        self.linkEmbedding = []
         with open(ATEembeddingfile, 'r', encoding='utf-8') as r:
             ATElines = r.readlines()
         entlength = len(ATElines)
@@ -68,37 +71,41 @@ class EAstrategy:
             aline_list = aline.split()
             self.linkEmbedding.append(aline_list)
 
-    def EAlinkstrategy(self,RTEembeddingfile,ATEembeddingfile):
-        RTElines=pickle.load(open(RTEembeddingfile,'rb'),encoding='utf-8')
-        with open(ATEembeddingfile,'r',encoding='utf-8') as r:
-            ATElines=r.readlines()
-        entlength=len(ATElines)
-        for i in range(entlength): #list连接操作
-            rline=RTElines[i]
-            rline_list=rline.tolist()
-            aline=ATElines[i].strip()
-            aline_list=aline.split()
-            self.linkEmbedding.append(rline_list+aline_list)
+    def EAlinkstrategy(self, RTEembeddingfile, ATEembeddingfile):
+        self.linkEmbedding = []
+        RTElines = pickle.load(open(RTEembeddingfile, 'rb'), encoding='utf-8')
+        with open(ATEembeddingfile, 'r', encoding='utf-8') as r:
+            ATElines = r.readlines()
+        entlength = len(ATElines)
+        for i in range(entlength):  # list连接操作
+            rline = RTElines[i]
+            rline_list = rline.tolist()
+            aline = ATElines[i].strip()
+            aline_list = aline.split()
+            self.linkEmbedding.append(rline_list + aline_list)
 
-    def EAlinkstrategy_weight(self,RTEembeddingfile,ATEembeddingfile, w):
-        RTElines=pickle.load(open(RTEembeddingfile,'rb'),encoding='utf-8')
-        with open(ATEembeddingfile,'r',encoding='utf-8') as r:
-            ATElines=r.readlines()
-        entlength=len(ATElines)
-        for i in range(entlength): #分配权重操作
-            rline=RTElines[i]
-            rline_list=rline.tolist()
+    def EAlinkstrategy_weight(self, RTEembeddingfile, ATEembeddingfile, w):
+        self.linkEmbedding = []
+        RTElines = pickle.load(open(RTEembeddingfile, 'rb'), encoding='utf-8')
+        with open(ATEembeddingfile, 'r', encoding='utf-8') as r:
+            ATElines = r.readlines()
+        entlength = len(ATElines)
+        for i in range(entlength):  # 分配权重操作
+            rline = RTElines[i]
+            rline_list = rline.tolist()
             rline_list_w = [float(j) * float(w) for j in rline_list]
-            aline=ATElines[i].strip()
-            aline_list=aline.split()
-            aline_list_w = [float(j) * float(1-w) for j in aline_list]
-            add_weight = list(map(lambda x:x[0]+x[1], zip(rline_list_w, aline_list_w)))
+            aline = ATElines[i].strip()
+            aline_list = aline.split()
+            aline_list_w = [float(j) * float(1 - w) for j in aline_list]
+            add_weight = list(map(lambda x: x[0] + x[1], zip(rline_list_w, aline_list_w)))
             self.linkEmbedding.append(add_weight)
         print('complete weighting')
 
     def EAlinkstrategy_iteration(self, RTEembeddingfile):
+        self.linkEmbedding = []
         RTElines = pickle.load(open(RTEembeddingfile, 'rb'), encoding='utf-8')
         self.linkEmbedding = RTElines
+
     # def distance(self,yuzhi):
     #     count = 0
     #     for i in self.kg1E:
@@ -120,8 +127,8 @@ class EAstrategy:
     #     print('complete distancing')
 
     def get_hits(self, top_k=(1, 10, 50, 100)):
-        Lvec = np.array([self.linkEmbedding[e1] for e1,e2 in self.seeds])
-        Rvec = np.array([self.linkEmbedding[e2] for e1,e2 in self.seeds])
+        Lvec = np.array([self.linkEmbedding[e1] for e1, e2 in self.seeds])
+        Rvec = np.array([self.linkEmbedding[e2] for e1, e2 in self.seeds])
         sim = spatial.distance.cdist(Lvec, Rvec, metric='cityblock')
         top_lr = [0] * len(top_k)
         for i in range(Lvec.shape[0]):  # 对于每个KG1实体
@@ -147,23 +154,25 @@ class EAstrategy:
         return ((top_lr[0] / len(self.seeds)) + (top_rl[0] / len(self.seeds))) / 2
 
 
-test=EAstrategy()
-
+test = EAstrategy()
 
 test.read_EA_list('data/' + lang + '/ref_ent_ids')  # 得到已知对齐实体
 test.read_KG1_and_KG2_list('data/' + lang + '/ent_ids_1', 'data/' + lang + '/ent_ids_2')  # 得到kg1和kg2中的实体
 
 print('language:' + lang)
+print('拼接策略')
 # 拼接策略
 # test.EAlinkstrategy('data/' + lang + '/RTentsembed.pkl', 'data/' + lang + '/ATentsembed.txt')  # 连接策略
-# test.get_hits()
+test.EAlinkstrategy('2.pkl', 'ATentsembed.txt')  # 连接策略
+test.get_hits()
 
 # 权重策略
-ww = 0.2
-print('w='+str(ww))
-# test.EAlinkstrategy_weight('data/'+lang+'/RTentsembed.pkl','data/'+lang+'/ATentsembed.txt', ww) #连接策略
-test.EAlinkstrategy_weight('2.pkl','ATentsembed.txt', ww) #连接策略
-test.get_hits()
+# ww = 0.8
+# # test.EAlinkstrategy_weight('data/'+lang+'/RTentsembed.pkl','data/'+lang+'/ATentsembed.txt', ww) #连接策略
+for ww in range(0, 10, 1):
+    print('权重策略 w=' + str(ww))
+    test.EAlinkstrategy_weight('2.pkl', 'ATentsembed.txt', ww / 10)  # 连接策略
+    test.get_hits()
 
 # 迭代策略
 # test.EAlinkstrategy_iteration('results/'+'emb_it_'+lang+'.pkl')
@@ -173,15 +182,16 @@ test.get_hits()
 #     w.write('\n')
 
 # 消融实验
-# print("关系消融实验")
+print("关系消融实验")
 # test.XRR('data/' + lang + '/RTentsembed.pkl')
-# test.get_hits()
+test.XRR('2.pkl')
+test.get_hits()
 
-# print("属性消融实验")
+print("属性消融实验")
 # test.XRA('data/'+lang+'/ATentsembed.txt')
-# test.XRA('./ATentsembed.txt')
-#test.XRA('res/entity2vec.bern')
-# test.get_hits()
+test.XRA('./ATentsembed.txt')
+# test.XRA('res/entity2vec.bern')
+test.get_hits()
 
 # 迭代权重策略
 # test.EAlinkstrategy_iteration('results/'+'emb_itwe_0.5_'+lang+'.pkl')
