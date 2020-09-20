@@ -9,13 +9,14 @@
 #include <pthread.h>
 #include <vector>
 #include <map>
+#include <iostream>
 
 using namespace std;
 
 const float pi = 3.141592653589793238462643383;
 
 int transeThreads = 8;
-int transeTrainTimes = 3000;
+int transeTrainTimes = 3001;
 int nbatches = 1;
 int dimension = 200;
 float transeAlpha = 0.001;
@@ -117,8 +118,8 @@ float *relationVec, *entityVec, *valueVec;
 float *relationVecDao, *entityVecDao, *valueVecDao;
 
 void init() {
-  printf("init start");
-  printf("init attr embedding");
+  cout << "init start" << endl;
+  cout << "init attr embedding" << endl;
 	FILE *fin;
 	int tmp;
   // 1. 初始化 属性 embedding
@@ -136,7 +137,7 @@ void init() {
 	}
 
   // 2. 初始化 属性值 embedding
-  printf("init value embedding");
+  cout << "init value embedding" << endl;
 	tmp = 1;
 	valueTotal = 410207;
 
@@ -147,7 +148,7 @@ void init() {
 	}
 
   // 3. 初始化 实体 embedding
-  printf("init entity embedding");
+  cout << "init entity embedding" << endl;
 	/*fin = fopen((inPath + "newentity2id.txt").c_str(), "r");
 	tmp = fscanf(fin, "%d", &entityTotal);
 	fclose(fin);
@@ -163,14 +164,15 @@ void init() {
 	}
 
 	// 4. initialize combinationProbability 初始化对齐概率
-  printf("init combinationProbability");
+  cout << "init combinationProbability" << endl;
 	combinationProbability.resize(entityTotal);
 	fill(combinationProbability.begin(), combinationProbability.end(), 0);
 
   // 5. 初始化 三元组
-  printf("init triple");
+  cout << "init triple" << endl;
 	fin = fopen((inPath + "triple2id.txt").c_str(), "r");
-	tripleTotal = 1105208;
+	// tripleTotal = 1105208;
+	tripleTotal = 1424633;//数据增强，用对齐实体替换三元组头部
 	trainHead = (Triple *)calloc(tripleTotal, sizeof(Triple));
 	trainTail = (Triple *)calloc(tripleTotal, sizeof(Triple));
 	trainList = (Triple *)calloc(tripleTotal, sizeof(Triple));
@@ -215,7 +217,7 @@ void init() {
 	valueVecDao = (float*)calloc(dimension * valueTotal, sizeof(float));
 
   // 6. 载入已知的对齐实体
-  printf("init align entities");
+  cout << "init align entities" << endl;
 	int commonTotal = 4500;//对齐实体对取30%作为训练集
 	fin = fopen((inPath + "common_entities2id.txt").c_str(), "r");
 	for(int i = 0;i<commonTotal;i++){
@@ -234,7 +236,7 @@ void init() {
 		}
 	}
 	fclose(fin);
-  printf("init end");
+  cout << "init end" << endl;
 }
 
 /*

@@ -8,8 +8,8 @@ from scipy import spatial
 # lang = sys.argv[1]
 # w = float(sys.argv[2])
 lang = 'fr_en'
-# w = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]  #
-w = [0.2, 0.5, 0.8]  #
+w = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]  #
+# w = [0.2, 0.5, 0.8]  #
 
 
 class EAstrategy:
@@ -164,7 +164,7 @@ print('language:' + lang)
 
 struct_embedding = 'result/' + lang + '/RTentsembed.pkl'
 # attribute_embedding = 'result/' + lang + '/ATentsembed.txt'
-attribute_embedding = 'res/entity2vec1700.bern'
+attribute_embedding = 'res/entity2vec2900.bern'
 print('拼接策略')
 # 拼接策略
 test.EAlinkstrategy(struct_embedding, attribute_embedding)  # 连接策略
@@ -174,10 +174,10 @@ test.get_hits()
 # 权重策略
 # ww = 0.8
 # # test.EAlinkstrategy_weight('data/'+lang+'/RTentsembed.pkl','data/'+lang+'/ATentsembed.txt', ww) #连接策略
-for ww in w:
-    print('权重策略 w=' + str(ww))
-    test.EAlinkstrategy_weight(struct_embedding, attribute_embedding, ww)  # 连接策略
-    test.get_hits()
+# for ww in w:
+#     print('权重策略 w=' + str(ww))
+#     test.EAlinkstrategy_weight(struct_embedding, attribute_embedding, ww)  # 连接策略
+#     test.get_hits()
 
 # 迭代策略
 # test.EAlinkstrategy_iteration('results/'+'emb_it_'+lang+'.pkl')
