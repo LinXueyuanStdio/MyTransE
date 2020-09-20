@@ -612,9 +612,9 @@ class TransE:
 
     def append_align_triple(self):
         self.train_triples = append_align_triple(self.train_triples, self.t.train_seeds)
-        logger.info("triple: " + str(len(self.train_triples)))
 
     def init_dataset(self):
+        logger.info("triple: " + str(len(self.train_triples)))
         train_dataloader_head = DataLoader(
             TrainDataset(self.train_triples, self.entity_count, self.attr_count, self.value_count, 1024, 'head-batch'),
             batch_size=2048,
@@ -866,7 +866,7 @@ def train_model_for_fr_en(result_path="./result/TransE2/fr_en/"):
     m.init_dataset()
     m.init_model()
     m.init_optimizer()
-    m.run_train(need_to_load_checkpoint=False)
+    m.run_train(need_to_load_checkpoint=True)
 
 
 def train_model_for_ja_en(result_path="./result/TransE2/ja_en/"):
