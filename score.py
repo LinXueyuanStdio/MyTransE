@@ -8,7 +8,8 @@ from scipy import spatial
 # lang = sys.argv[1]
 # w = float(sys.argv[2])
 lang = 'fr_en'
-w = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]  #
+# w = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]  #
+w = [0.2, 0.5, 0.8]  #
 
 
 class EAstrategy:
@@ -160,9 +161,13 @@ test.read_EA_list('data/' + lang + '/ref_ent_ids')  # 得到已知对齐实体
 test.read_KG1_and_KG2_list('data/' + lang + '/ent_ids_1', 'data/' + lang + '/ent_ids_2')  # 得到kg1和kg2中的实体
 
 print('language:' + lang)
+
+struct_embedding = 'result/' + lang + '/RTentsembed.pkl'
+# attribute_embedding = 'result/' + lang + '/ATentsembed.txt'
+attribute_embedding = 'res/entity2vec1700.bern'
 print('拼接策略')
 # 拼接策略
-test.EAlinkstrategy('result/' + lang + '/RTentsembed.pkl', 'result/' + lang + '/ATentsembed.txt')  # 连接策略
+test.EAlinkstrategy(struct_embedding, attribute_embedding)  # 连接策略
 # test.EAlinkstrategy('2.pkl', './result/ja_en/ATentsembed.txt')  # 连接策略
 test.get_hits()
 
@@ -171,7 +176,7 @@ test.get_hits()
 # # test.EAlinkstrategy_weight('data/'+lang+'/RTentsembed.pkl','data/'+lang+'/ATentsembed.txt', ww) #连接策略
 for ww in w:
     print('权重策略 w=' + str(ww))
-    test.EAlinkstrategy_weight('result/' + lang + '/RTentsembed.pkl', 'result/' + lang + '/ATentsembed.txt', ww)  # 连接策略
+    test.EAlinkstrategy_weight(struct_embedding, attribute_embedding, ww)  # 连接策略
     test.get_hits()
 
 # 迭代策略
@@ -183,11 +188,11 @@ for ww in w:
 
 # 消融实验
 print("关系消融实验")
-test.XRR('result/' + lang + '/RTentsembed.pkl')
+test.XRR(struct_embedding)
 test.get_hits()
 
 print("属性消融实验")
-test.XRA('result/' + lang + '/ATentsembed.txt')
+test.XRA(attribute_embedding)
 # test.XRA('./result/ja_en/ATentsembed.txt')
 # test.XRA('res/entity2vec.bern')
 test.get_hits()
