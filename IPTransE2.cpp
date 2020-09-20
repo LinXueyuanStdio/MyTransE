@@ -17,7 +17,7 @@ const float pi = 3.141592653589793238462643383;
 
 int transeThreads = 8;
 int transeTrainTimes = 3001;
-int nbatches = 1;
+int nbatches = 3;
 int dimension = 200;
 float transeAlpha = 0.001;
 float margin = 1;
@@ -229,6 +229,9 @@ void init() {
 	int entity_id_1 = 19661;
 	for(int i = 0;i<entityTotal;i++){
 		if(!commonEntities.count(i)){
+			//跳过已有的对齐实体
+			//论文里说，将训练集的对齐实体以外的实体作为测试集和验证集
+			//而且这里并没用将训练集用于训练，而是将训练集做了数据增强
 			if(i < entity_id_1){
 				entitiesInKg1.push_back(i);
 			}
@@ -469,7 +472,7 @@ void do_combine(){
 		if(occupied.count(ent1) || occupied.count(ent2)) continue;
 		correspondingEntity[ent1] = ent2;
 		correspondingEntity[ent2] = ent1;
-		printf("Combined %d and %d\n", ent1, ent2);
+		//printf("Combined %d and %d\n", ent1, ent2);
 		occupied.insert(ent1);
 		occupied.insert(ent2);
 		combinationProbability[ent1] = sigmoid(combination_threshold - dis);
