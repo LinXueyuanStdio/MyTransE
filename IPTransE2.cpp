@@ -17,27 +17,33 @@ const float pi = 3.141592653589793238462643383;
 int transeThreads = 8;
 int transeTrainTimes = 3000;
 int nbatches = 1;
-int dimension = 50;
+int dimension = 200;
 float transeAlpha = 0.001;
 float margin = 1;
 int L1_flag = 1;
 double combination_threshold = 3;
 int combination_restriction = 5000;
 
-string inPath = "../data/";
-string outPath = "../res/";
+string inPath = "./data/fr_en/";
+string outPath = "./res/";
 
 int *lefHead, *rigHead;
 int *lefTail, *rigTail;
+// 已对齐的实体
 set<int> commonEntities;
+// 未对齐的实体
 vector<int> entitiesInKg1, entitiesInKg2;
+// 模型认为的对齐实体
 map<int, int> correspondingEntity;
+// 模型认为的对齐概率
 vector<float> combinationProbability;
 
 struct Triple {
 	int h, r, t;
 };
-
+//trainList 原始三元组
+//trainHead 替换头部
+//trainTail 替换尾部
 Triple *trainHead, *trainTail, *trainList;
 
 struct cmp_head {
@@ -106,21 +112,22 @@ void norm(float * con) {
 	Read triples from the training file.
 */
 
-int relationTotal, entityTotal, tripleTotal;
-float *relationVec, *entityVec;
-float *relationVecDao, *entityVecDao;
+int relationTotal, entityTotal, valueTotal, tripleTotal;
+float *relationVec, *entityVec, *valueVec;
+float *relationVecDao, *entityVecDao, *valueVecDao;
 
 void init() {
-
+  printf("init start");
+  printf("init attr embedding");
 	FILE *fin;
 	int tmp;
-
+  // 1. 初始化 属性 embedding
 	/*fin = fopen((inPath + "relation2id.txt").c_str(), "r");
 	tmp = fscanf(fin, "%d", &relationTotal);
 	fclose(fin);
 	*/
 	tmp = 1;
-	relationTotal = 1345;
+	relationTotal = 10969;
 
 	relationVec = (float *)calloc(relationTotal * dimension, sizeof(float));
 	for (int i = 0; i < relationTotal; i++) {
@@ -128,12 +135,25 @@ void init() {
 			relationVec[i * dimension + ii] = randn(0, 1.0 / dimension, -6 / sqrt(dimension), 6 / sqrt(dimension));
 	}
 
+  // 2. 初始化 属性值 embedding
+  printf("init value embedding");
+	tmp = 1;
+	valueTotal = 410207;
+
+	valueVec = (float *)calloc(valueTotal * dimension, sizeof(float));
+	for (int i = 0; i < valueTotal; i++) {
+		for (int ii=0; ii<dimension; ii++)
+			valueVec[i * dimension + ii] = randn(0, 1.0 / dimension, -6 / sqrt(dimension), 6 / sqrt(dimension));
+	}
+
+  // 3. 初始化 实体 embedding
+  printf("init entity embedding");
 	/*fin = fopen((inPath + "newentity2id.txt").c_str(), "r");
 	tmp = fscanf(fin, "%d", &entityTotal);
 	fclose(fin);
 	*/
 	tmp = 1;
-	entityTotal = 24902;
+	entityTotal = 39654;
 
 	entityVec = (float *)calloc(entityTotal * dimension, sizeof(float));
 	for (int i = 0; i < entityTotal; i++) {
@@ -142,12 +162,15 @@ void init() {
 		norm(entityVec+i*dimension);
 	}
 
-	//initialize combinationProbability
+	// 4. initialize combinationProbability 初始化对齐概率
+  printf("init combinationProbability");
 	combinationProbability.resize(entityTotal);
 	fill(combinationProbability.begin(), combinationProbability.end(), 0);
 
+  // 5. 初始化 三元组
+  printf("init triple");
 	fin = fopen((inPath + "triple2id.txt").c_str(), "r");
-	tmp = fscanf(fin, "%d", &tripleTotal);
+	tripleTotal = 1105208;
 	trainHead = (Triple *)calloc(tripleTotal, sizeof(Triple));
 	trainTail = (Triple *)calloc(tripleTotal, sizeof(Triple));
 	trainList = (Triple *)calloc(tripleTotal, sizeof(Triple));
@@ -170,8 +193,8 @@ void init() {
 
 	lefHead = (int *)calloc(entityTotal, sizeof(int));
 	rigHead = (int *)calloc(entityTotal, sizeof(int));
-	lefTail = (int *)calloc(entityTotal, sizeof(int));
-	rigTail = (int *)calloc(entityTotal, sizeof(int));
+	lefTail = (int *)calloc(valueTotal, sizeof(int));
+	rigTail = (int *)calloc(valueTotal, sizeof(int));
 	memset(rigHead, -1, sizeof(rigHead));
 	memset(rigTail, -1, sizeof(rigTail));
 	for (int i = 1; i < tripleTotal; i++) {
@@ -189,25 +212,29 @@ void init() {
 
 	relationVecDao = (float*)calloc(dimension * relationTotal, sizeof(float));
 	entityVecDao = (float*)calloc(dimension * entityTotal, sizeof(float));
+	valueVecDao = (float*)calloc(dimension * valueTotal, sizeof(float));
 
-	int commonTotal;
+  // 6. 载入已知的对齐实体
+  printf("init align entities");
+	int commonTotal = 4500;//对齐实体对取30%作为训练集
 	fin = fopen((inPath + "common_entities2id.txt").c_str(), "r");
-	tmp = fscanf(fin, "%d", &commonTotal);
 	for(int i = 0;i<commonTotal;i++){
 		int entId;
 		tmp = fscanf(fin, "%d", &entId);
 		commonEntities.insert(entId);
 	}
 	printf("%d known entities pairs.\n", commonTotal);
+	int entity_id_1 = 19661;
 	for(int i = 0;i<entityTotal;i++){
 		if(!commonEntities.count(i)){
-			if(i < 14951){
+			if(i < entity_id_1){
 				entitiesInKg1.push_back(i);
 			}
 			else entitiesInKg2.push_back(i);
 		}
 	}
 	fclose(fin);
+  printf("init end");
 }
 
 /*
@@ -220,12 +247,12 @@ float res;
 
 float calc_sum(int e1, int e2, int rel) {
 	float sum=0;
-	int last1 = e1 * dimension;
-	int last2 = e2 * dimension;
-	int lastr = rel * dimension;
-        	for (int ii=0; ii < dimension; ii++) {
-            		sum += fabs(entityVec[last2 + ii] - entityVec[last1 + ii] - relationVec[lastr + ii]);
-            	}
+	int last1 = e1 * dimension;  //实体
+	int last2 = e2 * dimension;  //属性值
+	int lastr = rel * dimension; //属性
+	for (int ii=0; ii < dimension; ii++) {
+		sum += fabs(valueVec[last2 + ii] - entityVec[last1 + ii] - relationVec[lastr + ii]);
+	}
 	return sum;
 }
 
@@ -238,22 +265,22 @@ void gradient(int e1_a, int e2_a, int rel_a, int e1_b, int e2_b, int rel_b) {
 	int lastbr = rel_b * dimension;
 	for (int ii=0; ii  < dimension; ii++) {
 		float x;
-		x = (entityVec[lasta2 + ii] - entityVec[lasta1 + ii] - relationVec[lastar + ii]);
+		x = (valueVec[lasta2 + ii] - entityVec[lasta1 + ii] - relationVec[lastar + ii]);
 		if (x > 0)
 			x = -transeAlpha;
 		else
 			x = transeAlpha;
 		relationVec[lastar + ii] -= x;
 		entityVec[lasta1 + ii] -= x;
-		entityVec[lasta2 + ii] += x;
-		x = (entityVec[lastb2 + ii] - entityVec[lastb1 + ii] - relationVec[lastbr + ii]);
+		valueVec[lasta2 + ii] += x;
+		x = (valueVec[lastb2 + ii] - entityVec[lastb1 + ii] - relationVec[lastbr + ii]);
 		if (x > 0)
 			x = transeAlpha;
 		else
 			x = -transeAlpha;
 		relationVec[lastbr + ii] -=  x;
 		entityVec[lastb1 + ii] -= x;
-		entityVec[lastb2 + ii] += x;
+		valueVec[lastb2 + ii] += x;
 	}
 }
 
@@ -272,16 +299,20 @@ int corrupt_head(int id, int h, int r) {
 	rig = rigHead[h];
 	while (lef + 1 < rig) {
 		mid = (lef + rig) >> 1;
-		if (trainHead[mid].r >= r) rig = mid; else
-		lef = mid;
+		if (trainHead[mid].r >= r)
+		  rig = mid;
+		else
+		  lef = mid;
 	}
 	ll = rig;
 	lef = lefHead[h];
 	rig = rigHead[h] + 1;
 	while (lef + 1 < rig) {
 		mid = (lef + rig) >> 1;
-		if (trainHead[mid].r <= r) lef = mid; else
-		rig = mid;
+		if (trainHead[mid].r <= r)
+		  lef = mid;
+		else
+		  rig = mid;
 	}
 	rr = lef;
 	int tmp = rand_max(id, entityTotal - (rr - ll + 1));
@@ -304,16 +335,20 @@ int corrupt_tail(int id, int t, int r) {
 	rig = rigTail[t];
 	while (lef + 1 < rig) {
 		mid = (lef + rig) >> 1;
-		if (trainTail[mid].r >= r) rig = mid; else
-		lef = mid;
+		if (trainTail[mid].r >= r)
+		  rig = mid;
+		else
+		  lef = mid;
 	}
 	ll = rig;
 	lef = lefTail[t];
 	rig = rigTail[t] + 1;
 	while (lef + 1 < rig) {
 		mid = (lef + rig) >> 1;
-		if (trainTail[mid].r <= r) lef = mid; else
-		rig = mid;
+		if (trainTail[mid].r <= r)
+		  lef = mid;
+		else
+		  rig = mid;
 	}
 	rr = lef;
 	int tmp = rand_max(id, entityTotal - (rr - ll + 1));
@@ -339,21 +374,29 @@ void* transetrainMode(void *con) {
 		int i = rand_max(id, transeLen);
 		int pr = 500;
 		int h1, t1, h2, t2,r;
+		int is_corrupt_head = 0;
 		if (randd(id) % 1000 < pr) {
 			j = corrupt_head(id, trainList[i].h, trainList[i].r);
 			train_kb(trainList[i].h, trainList[i].t, trainList[i].r, trainList[i].h, j, trainList[i].r);
 			h1 = trainList[i].h, t1 = trainList[i].t, r = trainList[i].r;
 			h2 = trainList[i].h, t2 = j;
+			is_corrupt_head = 0;
 		} else {
 			j = corrupt_tail(id, trainList[i].t, trainList[i].r);
 			train_kb(trainList[i].h, trainList[i].t, trainList[i].r, j, trainList[i].t, trainList[i].r);
 			h1 = trainList[i].h, t1 = trainList[i].t, r = trainList[i].r;
 			h2 = j, t2 = trainList[i].t;
+			is_corrupt_head = 1;
 		}
 		norm(relationVec + dimension * trainList[i].r);
 		norm(entityVec + dimension * trainList[i].h);
-		norm(entityVec + dimension * trainList[i].t);
-		norm(entityVec + dimension * j);
+		norm(valueVec + dimension * trainList[i].t);
+		if (is_corrupt_head == 0) {
+			norm(entityVec + dimension * j);
+		} else {
+			norm(valueVec + dimension * j);
+		}
+
 		if(float(randd(id)%1000)/1000.0 < combinationProbability[h1]){
 		    int h1_cor = correspondingEntity[h1];
 		    train_kb(h1_cor, t1, r, h2, t2, r);
@@ -364,20 +407,25 @@ void* transetrainMode(void *con) {
 		    train_kb(h1, t1, r, h2_cor, t2, r);
 		    norm(entityVec + dimension * h2_cor);
 		}
-		if(float(randd(id)%1000)/1000.0 < combinationProbability[t1]){
-		    int t1_cor = correspondingEntity[t1];
-		    train_kb(h1, t1_cor, r, h2, t2, r);
-		    norm(entityVec + dimension * t1_cor);
-		}
-		if(float(randd(id)%1000)/1000.0 < combinationProbability[t2]){
-		    int t2_cor = correspondingEntity[t2];
-		    train_kb(h1, t1, r, h2, t2_cor, r);
-		    norm(entityVec + dimension * t2_cor);
-		}
+		// 模型不预测尾部
+		// if(float(randd(id)%1000)/1000.0 < combinationProbability[t1]){
+		//     int t1_cor = correspondingEntity[t1];
+		//     train_kb(h1, t1_cor, r, h2, t2, r);
+		//     norm(entityVec + dimension * t1_cor);
+		// }
+		// if(float(randd(id)%1000)/1000.0 < combinationProbability[t2]){
+		//     int t2_cor = correspondingEntity[t2];
+		//     train_kb(h1, t1, r, h2, t2_cor, r);
+		//     norm(entityVec + dimension * t2_cor);
+		// }
 		norm(relationVec + dimension * trainList[i].r);
 		norm(entityVec + dimension * trainList[i].h);
-		norm(entityVec + dimension * trainList[i].t);
-		norm(entityVec + dimension * j);
+		norm(valueVec + dimension * trainList[i].t);
+		if (is_corrupt_head == 0) {
+			norm(entityVec + dimension * j);
+		} else {
+			norm(valueVec + dimension * j);
+		}
 	}
 }
 
@@ -400,16 +448,16 @@ void do_combine(){
 	for(auto &i : entitiesInKg1)
 		for(auto &j : entitiesInKg2)
 			distance2entitiesPair.push_back(make_pair(calc_distance(i, j), make_pair(i, j)));
-    sort(distance2entitiesPair.begin(), distance2entitiesPair.end());
-    set<int> occupied;
-    float minimalDistance = 0;
-    for(auto &i : distance2entitiesPair){
+	sort(distance2entitiesPair.begin(), distance2entitiesPair.end());
+	set<int> occupied;
+	float minimalDistance = 0;
+	for(auto &i : distance2entitiesPair){
 		if(i.first > 0){
-	    	minimalDistance = i.first;
-	    	break;
+			minimalDistance = i.first;
+			break;
 		}
-    }
-    printf("Minimal distance is %lf \n", minimalDistance);
+	}
+	printf("Minimal distance is %lf \n", minimalDistance);
 	correspondingEntity.clear();
 	fill(combinationProbability.begin(), combinationProbability.end(), 0);
 	int combination_counter = 0;
@@ -426,7 +474,7 @@ void do_combine(){
 		combinationProbability[ent2] = sigmoid(combination_threshold - dis);
 		if(combination_counter == combination_restriction) break;
 		combination_counter++;
-    }
+  }
 	time(&endTimer);
 	printf("Using %.f seconds to combine %d entities pairs.\n", difftime(endTimer, beginTimer), combination_counter);
 	combination_restriction += 1000;
@@ -462,21 +510,13 @@ void* train_transe(void *con) {
 */
 
 void out_transe(string iter = "") {
-		FILE* f2 = fopen((outPath + "relation2vec" + iter + ".bern").c_str(), "w");
 		FILE* f3 = fopen((outPath + "entity2vec" + iter + ".bern").c_str(), "w");
-		for (int i=0; i < relationTotal; i++) {
-			int last = dimension * i;
-			for (int ii = 0; ii < dimension; ii++)
-				fprintf(f2, "%.6f\t", relationVec[last + ii]);
-			fprintf(f2,"\n");
-		}
 		for (int  i = 0; i < entityTotal; i++) {
 			int last = i * dimension;
 			for (int ii = 0; ii < dimension; ii++)
 				fprintf(f3, "%.6f\t", entityVec[last + ii] );
 			fprintf(f3,"\n");
 		}
-		fclose(f2);
 		fclose(f3);
 }
 
@@ -491,3 +531,4 @@ int main() {
 	out_transe();
 	return 0;
 }
+//g++ IPTransE2.cpp -o IPtransE2 -pthread -O3 -std=c++11 -march=native
