@@ -531,4 +531,4 @@ int main() {
 	out_transe();
 	return 0;
 }
-//g++ IPTransE2.cpp -o IPtransE2 -pthread -O3 -std=c++11 -march=native
+//g++ IPTransE2.cpp -o IPtransE2.exe -pthread -O3 -std=c++11 -march=native
