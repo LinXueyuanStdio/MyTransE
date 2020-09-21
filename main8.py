@@ -49,20 +49,15 @@ class AttrTransE(nn.Module):
     def forward(self, sample, mode='single'):
         positive_sample, negative_sample, subsampling_weight = sample
         negative_score = self.distance((positive_sample, negative_sample), mode=mode)
-        print(negative_score.size())
         negative_score = F.logsigmoid(-negative_score).mean(dim=1)
-        print(negative_score.size())
 
         positive_score = self.distance(positive_sample, mode='single')
-        print(positive_score.size())
         positive_score = F.logsigmoid(positive_score).squeeze(dim=1)
-        print(positive_score.size())
 
         positive_sample_loss = - (subsampling_weight * positive_score).sum() / subsampling_weight.sum()
         negative_sample_loss = - (subsampling_weight * negative_score).sum() / subsampling_weight.sum()
 
         loss = (positive_sample_loss + negative_sample_loss) / 2
-        print(loss.size())
         return loss
 
     def distance(self, sample, mode='single'):
