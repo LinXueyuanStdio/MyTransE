@@ -696,13 +696,13 @@ class MTransE:
             self.value_embedding,
             self.gamma,
             self.embedding_range
-        )
+        ).to(self.device)
 
         self.align_model = AlignModel(
             self.entity_embedding,
             self.M,
             self.bias
-        )
+        ).to(self.device)
 
     def init_optimizer(self):
         self.optim = torch.optim.Adam(
