@@ -209,15 +209,7 @@ class KGEModel(nn.Module):
         return score
 
     @staticmethod
-    def train_step(model, optimizer, positive_sample, negative_sample, subsampling_weight, mode, device="cuda"):
-
-        model.train()
-        optimizer.zero_grad()
-
-        positive_sample = positive_sample.to(device)
-        negative_sample = negative_sample.to(device)
-        subsampling_weight = subsampling_weight.to(device)
-
+    def getloss(model, positive_sample, negative_sample, subsampling_weight, mode):
         negative_score = model((positive_sample, negative_sample), mode=mode)
         negative_score = F.logsigmoid(-negative_score).mean(dim=1)
 
@@ -228,6 +220,19 @@ class KGEModel(nn.Module):
         negative_sample_loss = - (subsampling_weight * negative_score).sum() / subsampling_weight.sum()
 
         loss = (positive_sample_loss + negative_sample_loss) / 2
+        return loss
+
+    @staticmethod
+    def train_step(model, optimizer, positive_sample, negative_sample, subsampling_weight, mode, device="cuda"):
+
+        model.train()
+        optimizer.zero_grad()
+
+        positive_sample = positive_sample.to(device)
+        negative_sample = negative_sample.to(device)
+        subsampling_weight = subsampling_weight.to(device)
+        loss = model.getloss(model, positive_sample, negative_sample, subsampling_weight, mode)
+
         loss.backward()
         optimizer.step()
 
@@ -594,21 +599,23 @@ class MTransE:
 
                  device="cuda",
                  learning_rate=0.001,
-                 visualize=False
+                 visualize=False,
+                 using_soft_align=False
                  ):
         self.entity_align_file = entity_align_file
         self.all_entity_file = all_entity_file
         self.all_attr_file = all_attr_file
         self.all_value_file = all_value_file
         self.all_triple_file = all_triple_file
-        self.device = device
-        self.visualize = visualize
         self.tensorboard_log_dir = tensorboard_log_dir
         self.checkpoint_path = checkpoint_path
         self.embedding_path = embedding_path
 
         self.learning_rate = learning_rate
-        self.using_soft_align = False
+
+        self.device = device
+        self.visualize = visualize
+        self.using_soft_align = using_soft_align
 
     def init_data(self):
         self.t = Tester()
@@ -664,7 +671,6 @@ class MTransE:
         )
 
     def init_soft_align(self):
-        self.using_soft_align = True
         self.combination_threshold = 3  # 小于这个距离则模型认为已对齐
         self.combination_restriction = 50000  # 模型认为对齐的实体对的个数
         self.distance2entitiesPair: List[Tuple[int, Tuple[int, int]]] = []
@@ -672,6 +678,9 @@ class MTransE:
         self.correspondingEntity = {}
         self.model_think_align_entities = []
         self.model_is_able_to_predict_align_entities = False
+
+    def init_visualize(self):
+        self.summary_writer = tensorboard.SummaryWriter(log_dir=self.tensorboard_log_dir)
 
     def soft_align(self, positive_sample, mode='single'):
         batch_size = positive_sample.size()[0]
@@ -786,7 +795,6 @@ class MTransE:
             _, init_step, score, last_loss = load_checkpoint(self.model, self.optim, self.checkpoint_path)
             last_score = score
 
-        summary_writer = tensorboard.SummaryWriter(log_dir=self.tensorboard_log_dir)
         progbar = Progbar(max_step=total_steps - init_step)
         start_time = time.time()
         for step in range(init_step, total_steps):
@@ -805,12 +813,11 @@ class MTransE:
 
             progbar.update(step - init_step + 1, [
                 ("loss", loss),
-                ("cost", round((time.time() - start_time))),
-                ("aligned", len(self.model_think_align_entities))
+                ("cost", round((time.time() - start_time)))
             ])
             break
             if self.visualize:
-                summary_writer.add_scalar(tag='Loss/train', scalar_value=loss, global_step=step)
+                self.summary_writer.add_scalar(tag='Loss/train', scalar_value=loss, global_step=step)
 
             if step > init_step and step % test_steps == 0:
                 logger.info("\n计算距离中")
@@ -819,12 +826,8 @@ class MTransE:
                 right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
                 sim = spatial.distance.cdist(left_vec, right_vec, metric='euclidean')
                 logger.info("计算距离完成，用时 " + str(int(time.time() - computing_time)) + " 秒")
-                self.do_combine("step-" + str(step), sim)
-                # try:
-                #     logger.info("启动线程，获取模型认为的对齐实体")
-                #     _thread.start_new_thread(self.do_combine, ("Thread of step-" + str(step), sim,))
-                # except SystemExit:
-                #     logger.error("Error: 无法启动线程")
+                if self.using_soft_align:
+                    self.do_combine("step-" + str(step), sim)
                 logger.info("属性消融实验")
                 hits = self.t.get_hits(left_vec, right_vec, sim)
                 hits_left = hits["left"]
@@ -835,19 +838,19 @@ class MTransE:
                 logger.info("score = " + str(score))
 
                 if self.visualize:
-                    summary_writer.add_embedding(tag='Embedding',
+                    self.summary_writer.add_embedding(tag='Embedding',
                                                  mat=self.model.entity_embedding,
                                                  metadata=self.entity_name_list,
                                                  global_step=step)
-                    summary_writer.add_scalar(tag='Hits@1/left', scalar_value=hits_left[0][1], global_step=step)
-                    summary_writer.add_scalar(tag='Hits@10/left', scalar_value=hits_left[1][1], global_step=step)
-                    summary_writer.add_scalar(tag='Hits@50/left', scalar_value=hits_left[2][1], global_step=step)
-                    summary_writer.add_scalar(tag='Hits@100/left', scalar_value=hits_left[3][1], global_step=step)
+                    self.summary_writer.add_scalar(tag='Hits@1/left', scalar_value=hits_left[0][1], global_step=step)
+                    self.summary_writer.add_scalar(tag='Hits@10/left', scalar_value=hits_left[1][1], global_step=step)
+                    self.summary_writer.add_scalar(tag='Hits@50/left', scalar_value=hits_left[2][1], global_step=step)
+                    self.summary_writer.add_scalar(tag='Hits@100/left', scalar_value=hits_left[3][1], global_step=step)
 
-                    summary_writer.add_scalar(tag='Hits@1/right', scalar_value=hits_right[0][1], global_step=step)
-                    summary_writer.add_scalar(tag='Hits@10/right', scalar_value=hits_right[1][1], global_step=step)
-                    summary_writer.add_scalar(tag='Hits@50/right', scalar_value=hits_right[2][1], global_step=step)
-                    summary_writer.add_scalar(tag='Hits@100/right', scalar_value=hits_right[3][1], global_step=step)
+                    self.summary_writer.add_scalar(tag='Hits@1/right', scalar_value=hits_right[0][1], global_step=step)
+                    self.summary_writer.add_scalar(tag='Hits@10/right', scalar_value=hits_right[1][1], global_step=step)
+                    self.summary_writer.add_scalar(tag='Hits@50/right', scalar_value=hits_right[2][1], global_step=step)
+                    self.summary_writer.add_scalar(tag='Hits@100/right', scalar_value=hits_right[3][1], global_step=step)
                 if score > last_score:
                     last_score = score
                     save_checkpoint(self.model, self.optim, 1, step, score, loss, self.checkpoint_path)
@@ -867,64 +870,6 @@ class MTransE:
         logger.info("score = " + str(score))
 
 
-def train_model_for_fr_en(result_path="./result/TransE2/fr_en/"):
-    m = MTransE(entity_align_file="data/fr_en/ref_ent_ids",
-                all_entity_file="data/fr_en/ent_ids_all",
-                all_attr_file="data/fr_en/att2id_all",
-                all_value_file="data/fr_en/att_value2id_all",
-                all_triple_file="data/fr_en/att_triple_all",
-
-                checkpoint_path=result_path + "checkpoint.tar",
-                embedding_path=result_path + "ATentsembed.txt",
-                tensorboard_log_dir=result_path + "log/"
-                )
-    m.init_data()
-    # m.append_align_triple()
-    # m.init_soft_align()
-    m.init_dataset()
-    m.init_model()
-    m.init_optimizer()
-    m.run_train(need_to_load_checkpoint=False)
-
-
-def train_model_for_ja_en(result_path="./result/TransE2/ja_en/"):
-    m = MTransE(entity_align_file="data/ja_en/ref_ent_ids",
-                all_entity_file="data/ja_en/ent_ids_all",
-                all_attr_file="data/ja_en/att2id_all",
-                all_value_file="data/ja_en/att_value2id_all",
-                all_triple_file="data/ja_en/att_triple_all",
-
-                checkpoint_path=result_path + "checkpoint.tar",
-                embedding_path=result_path + "ATentsembed.txt",
-                tensorboard_log_dir=result_path + "log/")
-    m.init_data()
-    # m.append_align_triple()
-    m.init_soft_align()
-    m.init_dataset()
-    m.init_model()
-    m.init_optimizer()
-    m.run_train(need_to_load_checkpoint=False)
-
-
-def train_model_for_zh_en(result_path="./result/TransE2/zh_en/"):
-    m = MTransE(entity_align_file="data/zh_en/ref_ent_ids",
-                all_entity_file="data/zh_en/ent_ids_all",
-                all_attr_file="data/zh_en/att2id_all",
-                all_value_file="data/zh_en/att_value2id_all",
-                all_triple_file="data/zh_en/att_triple_all",
-
-                checkpoint_path=result_path + "checkpoint.tar",
-                embedding_path=result_path + "ATentsembed.txt",
-                tensorboard_log_dir=result_path + "log/")
-    m.init_data()
-    # m.append_align_triple()
-    m.init_soft_align()
-    m.init_dataset()
-    m.init_model()
-    m.init_optimizer()
-    m.run_train(need_to_load_checkpoint=False)
-
-
 def test_model():
     m = MTransE()
     m.init_data()
@@ -938,7 +883,8 @@ def test_model():
 @click.option('--lang', default='fr_en', help='使用的数据集')
 @click.option('--soft_align', default=False, help='训练时使用软对齐')
 @click.option('--data_enhance', default=False, help='训练时使用数据增强')
-def main(recover, lang, soft_align, data_enhance):
+@click.option('--visualize', default=False, help='训练时可视化')
+def main(recover, lang, soft_align, data_enhance, visualize):
     result_path = "./result/TransE2/%s/" % lang
     data_path = "./data/%s/" % lang
     m = MTransE(
@@ -950,13 +896,18 @@ def main(recover, lang, soft_align, data_enhance):
 
         checkpoint_path=result_path + "checkpoint.tar",
         embedding_path=result_path + "ATentsembed.txt",
-        tensorboard_log_dir=result_path + "log/"
+        tensorboard_log_dir=result_path + "log/",
+
+        using_soft_align=soft_align,
+        visualize=visualize
     )
     m.init_data()
     if data_enhance:
         m.append_align_triple()
     if soft_align:
         m.init_soft_align()
+    if visualize:
+        m.init_visualize()
     m.init_dataset()
     m.init_model()
     m.init_optimizer()
