@@ -166,7 +166,9 @@ class KGEModel(nn.Module):
             score = head + (relation - tail)
         else:
             score = (head + relation) - tail
+        print(score.size())
         score = self.gamma.item() - torch.norm(score, p=1, dim=2)
+        print(score.size())
         return score
 
     def TransE(self, head, relation, tail, mode):
@@ -211,15 +213,20 @@ class KGEModel(nn.Module):
     @staticmethod
     def getloss(model, positive_sample, negative_sample, subsampling_weight, mode):
         negative_score = model((positive_sample, negative_sample), mode=mode)
+        print(negative_score.size())
         negative_score = F.logsigmoid(-negative_score).mean(dim=1)
+        print(negative_score.size())
 
         positive_score = model(positive_sample)
+        print(positive_score.size())
         positive_score = F.logsigmoid(positive_score).squeeze(dim=1)
+        print(positive_score.size())
 
         positive_sample_loss = - (subsampling_weight * positive_score).sum() / subsampling_weight.sum()
         negative_sample_loss = - (subsampling_weight * negative_score).sum() / subsampling_weight.sum()
 
         loss = (positive_sample_loss + negative_sample_loss) / 2
+        print(loss.size())
         return loss
 
     @staticmethod
