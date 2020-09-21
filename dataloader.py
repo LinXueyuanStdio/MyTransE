@@ -10,6 +10,34 @@ import torch
 from torch.utils.data import Dataset
 
 
+class AlignDataset(Dataset):
+    def __init__(self, seeds):
+        self.seeds = seeds
+
+    def __len__(self):
+        return len(self.seeds)
+
+    def __getitem__(self, idx):
+        return self.seeds[idx]
+
+
+class AlignIterator(object):
+    def __init__(self, dataloader_align):
+        self.dataloader_align = self.one_shot_iterator(dataloader_align)
+
+    def __next__(self):
+        return next(self.dataloader_align)
+
+    @staticmethod
+    def one_shot_iterator(dataloader):
+        """
+        Transform a PyTorch Dataloader into python iterator
+        """
+        while True:
+            for data in dataloader:
+                yield data
+
+
 class TrainDataset(Dataset):
     def __init__(self, triples, nentity, nrelation, nvalue, negative_sample_size, mode):
         self.len = len(triples)
@@ -79,10 +107,10 @@ class TrainDataset(Dataset):
 
     @staticmethod
     def count_frequency(triples, start=4):
-        '''
+        """
         Get frequency of a partial triple like (head, relation) or (relation, tail)
         The frequency will be used for subsampling like word2vec
-        '''
+        """
         count = {}
         for head, relation, tail in triples:
             if (head, relation) not in count:
@@ -98,10 +126,10 @@ class TrainDataset(Dataset):
 
     @staticmethod
     def get_true_head_and_tail(triples):
-        '''
+        """
         Build a dictionary of true triples that will
         be used to filter these true triples for negative sampling
-        '''
+        """
 
         true_head = {}
         true_tail = {}
@@ -186,9 +214,9 @@ class BidirectionalOneShotIterator(object):
 
     @staticmethod
     def one_shot_iterator(dataloader):
-        '''
+        """
         Transform a PyTorch Dataloader into python iterator
-        '''
+        """
         while True:
             for data in dataloader:
                 yield data

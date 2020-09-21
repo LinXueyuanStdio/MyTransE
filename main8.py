@@ -18,9 +18,8 @@ from torch.utils import tensorboard
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 
-from dataloader import BidirectionalOneShotIterator
-from dataloader import TrainDataset
-from dataloader import TestDataset
+from dataloader import BidirectionalOneShotIterator, AlignIterator
+from dataloader import TrainDataset, TestDataset, AlignDataset
 import tensorflow as tf
 import tensorboard as tb
 import logging
@@ -31,62 +30,42 @@ torch.random.manual_seed(123456)
 
 
 # region model
-class KGEModel(nn.Module):
-    def __init__(self, train_seeds,
-                 nentity, nrelation, nvalue,
-                 hidden_dim, gamma):
-        super(KGEModel, self).__init__()
-        # self.model_name = model_name
-        self.nentity = nentity
-        self.nrelation = nrelation
-        self.nvalue = nvalue
-        self.hidden_dim = hidden_dim
-        self.epsilon = 2.0
 
-        self.gamma = nn.Parameter(
-            torch.Tensor([gamma]),
-            requires_grad=False
-        )
-
-        self.embedding_range = nn.Parameter(
-            torch.Tensor([(self.gamma.item() + self.epsilon) / hidden_dim]),
-            requires_grad=False
-        )
-        self.entity_dim = hidden_dim
-        self.relation_dim = hidden_dim
-        self.value_dim = hidden_dim
-
-        entity_weight = torch.zeros(nentity, self.entity_dim)
-        nn.init.normal_(entity_weight)
-        # nn.init.uniform_(
-        #     tensor=entity_weight,
-        #     a=-self.embedding_range.item(),
-        #     b=self.embedding_range.item()
-        # )
-        for left_entity, right_entity in train_seeds:
-            entity_weight[left_entity] = entity_weight[right_entity]
-        self.entity_embedding = nn.Parameter(entity_weight)
-
-        self.relation_embedding = nn.Parameter(torch.zeros(nrelation, self.relation_dim))
-        nn.init.normal_(self.relation_embedding)
-        # nn.init.uniform_(
-        #     tensor=self.relation_embedding,
-        #     a=-self.embedding_range.item(),
-        #     b=self.embedding_range.item()
-        # )
-
-        self.value_embedding = nn.Parameter(torch.zeros(nvalue, self.value_dim))
-        nn.init.normal_(self.value_embedding)
-        # nn.init.uniform_(
-        #     tensor=self.value_embedding,
-        #     a=-self.embedding_range.item(),
-        #     b=self.embedding_range.item()
-        # )
-
-        self.M = nn.Parameter(torch.zeros(self.entity_dim, self.entity_dim))
-        nn.init.orthogonal_(self.M)  # 正交矩阵
+class AttrTransE(nn.Module):
+    def __init__(self,
+                 entity_embedding,
+                 relation_embedding,
+                 value_embedding,
+                 gamma,
+                 embedding_range
+                 ):
+        super(AttrTransE, self).__init__()
+        self.entity_embedding = entity_embedding
+        self.relation_embedding = relation_embedding
+        self.value_embedding = value_embedding
+        self.gamma = gamma
+        self.embedding_range = embedding_range
 
     def forward(self, sample, mode='single'):
+        positive_sample, negative_sample, subsampling_weight = sample
+        negative_score = self.distance((positive_sample, negative_sample), mode=mode)
+        print(negative_score.size())
+        negative_score = F.logsigmoid(-negative_score).mean(dim=1)
+        print(negative_score.size())
+
+        positive_score = self.distance(positive_sample, mode='single')
+        print(positive_score.size())
+        positive_score = F.logsigmoid(positive_score).squeeze(dim=1)
+        print(positive_score.size())
+
+        positive_sample_loss = - (subsampling_weight * positive_score).sum() / subsampling_weight.sum()
+        negative_sample_loss = - (subsampling_weight * negative_score).sum() / subsampling_weight.sum()
+
+        loss = (positive_sample_loss + negative_sample_loss) / 2
+        print(loss.size())
+        return loss
+
+    def distance(self, sample, mode='single'):
         if mode == 'single':
             batch_size, negative_sample_size = sample.size(0), 1
 
@@ -155,23 +134,14 @@ class KGEModel(nn.Module):
         else:
             raise ValueError('mode %s not supported' % mode)
 
-        score = self.MTransE(head, relation, tail, mode)
+        score = self.TransE(head, relation, tail, mode)
 
-        return score
-
-    def MTransE(self, head, relation, tail, mode):
-        print(mode, head.size(), relation.size(), tail.size())
-
-        if mode == 'head-batch':
-            score = head + (relation - tail)
-        else:
-            score = (head + relation) - tail
-        print(score.size())
-        score = self.gamma.item() - torch.norm(score, p=1, dim=2)
-        print(score.size())
         return score
 
     def TransE(self, head, relation, tail, mode):
+        head = torch.norm(head, p=1, dim=2)  # TransE规定了必须用1范数来规范化
+        relation = torch.norm(relation, p=1, dim=2)
+        tail = torch.norm(tail, p=1, dim=2)
 
         if mode == 'head-batch':
             score = head + (relation - tail)
@@ -210,35 +180,133 @@ class KGEModel(nn.Module):
         score = self.gamma.item() - score.sum(dim=2)
         return score
 
-    @staticmethod
-    def getloss(model, positive_sample, negative_sample, subsampling_weight, mode):
-        negative_score = model((positive_sample, negative_sample), mode=mode)
-        print(negative_score.size())
-        negative_score = F.logsigmoid(-negative_score).mean(dim=1)
-        print(negative_score.size())
 
-        positive_score = model(positive_sample)
-        print(positive_score.size())
-        positive_score = F.logsigmoid(positive_score).squeeze(dim=1)
-        print(positive_score.size())
+class AlignModel(nn.Module):
+    def __init__(self, entity_embedding, M, bias):
+        super(AlignModel, self).__init__()
+        self.entity_embedding = entity_embedding
+        self.M = M
+        self.bias = bias
 
-        positive_sample_loss = - (subsampling_weight * positive_score).sum() / subsampling_weight.sum()
-        negative_sample_loss = - (subsampling_weight * negative_score).sum() / subsampling_weight.sum()
+    def forward(self, sample):
+        entity_a, entity_b = sample
 
-        loss = (positive_sample_loss + negative_sample_loss) / 2
-        print(loss.size())
+        a = torch.index_select(
+            self.entity_embedding,
+            dim=0,
+            index=entity_a
+        ).unsqueeze(1)
+
+        b = torch.index_select(
+            self.entity_embedding,
+            dim=0,
+            index=entity_b
+        ).unsqueeze(1)
+        a = torch.norm(a, p=1, dim=2)
+        b = torch.norm(b, p=1, dim=2)
+
+        loss = self.M * a - b
+        loss = loss.sum(dim=1).mean()  # L1范数
+        # loss = torch.sqrt(torch.square(loss).sum(dim=1)).mean()  # L2范数
+
         return loss
 
-    @staticmethod
-    def train_step(model, optimizer, positive_sample, negative_sample, subsampling_weight, mode, device="cuda"):
 
+class KGEModel(nn.Module):
+    def __init__(self, train_seeds,
+                 nentity, nrelation, nvalue,
+                 hidden_dim, gamma):
+        super(KGEModel, self).__init__()
+        # self.model_name = model_name
+        self.nentity = nentity
+        self.nrelation = nrelation
+        self.nvalue = nvalue
+        self.hidden_dim = hidden_dim
+        self.epsilon = 2.0
+
+        self.gamma = nn.Parameter(
+            torch.Tensor([gamma]),
+            requires_grad=False
+        )
+
+        self.embedding_range = nn.Parameter(
+            torch.Tensor([(self.gamma.item() + self.epsilon) / hidden_dim]),
+            requires_grad=False
+        )
+        self.entity_dim = hidden_dim
+        self.relation_dim = hidden_dim
+        self.value_dim = hidden_dim
+
+        entity_weight = torch.zeros(nentity, self.entity_dim)
+        nn.init.normal_(entity_weight)
+        # nn.init.uniform_(
+        #     tensor=entity_weight,
+        #     a=-self.embedding_range.item(),
+        #     b=self.embedding_range.item()
+        # )
+        for left_entity, right_entity in train_seeds:
+            entity_weight[left_entity] = entity_weight[right_entity]
+        self.entity_embedding = nn.Parameter(entity_weight)
+
+        self.relation_embedding = nn.Parameter(torch.zeros(nrelation, self.relation_dim))
+        nn.init.normal_(self.relation_embedding)
+        # nn.init.uniform_(
+        #     tensor=self.relation_embedding,
+        #     a=-self.embedding_range.item(),
+        #     b=self.embedding_range.item()
+        # )
+
+        self.value_embedding = nn.Parameter(torch.zeros(nvalue, self.value_dim))
+        nn.init.normal_(self.value_embedding)
+        # nn.init.uniform_(
+        #     tensor=self.value_embedding,
+        #     a=-self.embedding_range.item(),
+        #     b=self.embedding_range.item()
+        # )
+
+        self.M = nn.Parameter(torch.zeros(self.entity_dim, self.entity_dim))
+        nn.init.orthogonal_(self.M)  # 正交矩阵
+
+        self.bias = nn.Parameter(torch.zeros(self.entity_dim))
+        nn.init.normal_(self.bias)
+
+        self.attr_TransE = AttrTransE(
+            self.entity_embedding,
+            self.relation_embedding,
+            self.value_embedding,
+            self.gamma,
+            self.embedding_range
+        )
+
+        self.align_model = AlignModel(
+            self.entity_embedding,
+            self.M,
+            self.bias
+        )
+
+    def forward(self, sample, mode='single'):
+        positive_negative_pair, entity_pair = sample
+        loss_attr = self.attr_TransE(positive_negative_pair, mode)
+        loss_align = self.align_model(entity_pair)
+        return loss_attr + loss_align
+
+    @staticmethod
+    def train_step(model, optimizer,
+                   positive_sample, negative_sample, subsampling_weight, mode,
+                   entity_a, entity_b,
+                   device="cuda"):
         model.train()
         optimizer.zero_grad()
 
         positive_sample = positive_sample.to(device)
         negative_sample = negative_sample.to(device)
         subsampling_weight = subsampling_weight.to(device)
-        loss = model.getloss(model, positive_sample, negative_sample, subsampling_weight, mode)
+        entity_a = entity_a.to(device)
+        entity_b = entity_b.to(device)
+        positive_negative_pair = (positive_sample, negative_sample, subsampling_weight)
+        entity_pair = (entity_a, entity_b)
+        negative_sample = (positive_negative_pair, entity_pair)
+        loss = model(negative_sample, mode)
 
         loss.backward()
         optimizer.step()
@@ -661,6 +729,14 @@ class MTransE:
         )
         self.train_iterator = BidirectionalOneShotIterator(train_dataloader_head, train_dataloader_tail)
 
+        align_dataloader = DataLoader(
+            AlignDataset(self.t.train_seeds),
+            batch_size=2048,
+            shuffle=False,
+            num_workers=4
+        )
+        self.align_iterator = AlignIterator(align_dataloader)
+
     def init_model(self):
         self.model = KGEModel(
             self.t.train_seeds,
@@ -806,16 +882,19 @@ class MTransE:
         start_time = time.time()
         for step in range(init_step, total_steps):
             positive_sample, negative_sample, subsampling_weight, mode = next(self.train_iterator)
+            entity_a, entity_b = next(self.align_iterator)
             loss = self.model.train_step(self.model, self.optim,
-                                         positive_sample, negative_sample,
-                                         subsampling_weight, mode, self.device)
+                                         positive_sample, negative_sample, subsampling_weight, mode,
+                                         entity_a, entity_b,
+                                         self.device)
             # 软对齐
             # 根据模型认为的对齐实体，修改 positive_sample，negative_sample，再训练一轮
             if self.using_soft_align and self.model_is_able_to_predict_align_entities:
                 soft_positive_sample = self.soft_align(positive_sample, mode)
                 loss2 = self.model.train_step(self.model, self.optim,
-                                              soft_positive_sample, negative_sample,
-                                              subsampling_weight, mode, self.device)
+                                              soft_positive_sample, negative_sample, subsampling_weight, mode,
+                                              entity_a, entity_b,
+                                              self.device)
                 loss = (loss + loss2) / 2
 
             progbar.update(step - init_step + 1, [
@@ -846,9 +925,9 @@ class MTransE:
 
                 if self.visualize:
                     self.summary_writer.add_embedding(tag='Embedding',
-                                                 mat=self.model.entity_embedding,
-                                                 metadata=self.entity_name_list,
-                                                 global_step=step)
+                                                      mat=self.model.entity_embedding,
+                                                      metadata=self.entity_name_list,
+                                                      global_step=step)
                     self.summary_writer.add_scalar(tag='Hits@1/left', scalar_value=hits_left[0][1], global_step=step)
                     self.summary_writer.add_scalar(tag='Hits@10/left', scalar_value=hits_left[1][1], global_step=step)
                     self.summary_writer.add_scalar(tag='Hits@50/left', scalar_value=hits_left[2][1], global_step=step)
@@ -857,7 +936,8 @@ class MTransE:
                     self.summary_writer.add_scalar(tag='Hits@1/right', scalar_value=hits_right[0][1], global_step=step)
                     self.summary_writer.add_scalar(tag='Hits@10/right', scalar_value=hits_right[1][1], global_step=step)
                     self.summary_writer.add_scalar(tag='Hits@50/right', scalar_value=hits_right[2][1], global_step=step)
-                    self.summary_writer.add_scalar(tag='Hits@100/right', scalar_value=hits_right[3][1], global_step=step)
+                    self.summary_writer.add_scalar(tag='Hits@100/right', scalar_value=hits_right[3][1],
+                                                   global_step=step)
                 if score > last_score:
                     last_score = score
                     save_checkpoint(self.model, self.optim, 1, step, score, loss, self.checkpoint_path)
