@@ -24,6 +24,7 @@ from dataloader import TestDataset
 import tensorflow as tf
 import tensorboard as tb
 import logging
+import click
 
 tf.io.gfile = tb.compat.tensorflow_stub.io.gfile
 torch.random.manual_seed(123456)
@@ -879,11 +880,11 @@ def train_model_for_fr_en(result_path="./result/TransE2/fr_en/"):
                 )
     m.init_data()
     # m.append_align_triple()
-    m.init_soft_align()
+    # m.init_soft_align()
     m.init_dataset()
     m.init_model()
     m.init_optimizer()
-    m.run_train(need_to_load_checkpoint=True)
+    m.run_train(need_to_load_checkpoint=False)
 
 
 def train_model_for_ja_en(result_path="./result/TransE2/ja_en/"):
@@ -932,6 +933,35 @@ def test_model():
     m.run_test()
 
 
-train_model_for_fr_en()
-# train_model_for_ja_en()
-# train_model_for_zh_en()
+@click.command()
+@click.option('--recover', default=False, help='使用上一次训练的模型')
+@click.option('--lang', default='fr_en', help='使用的数据集')
+@click.option('--soft_align', default=False, help='训练时使用软对齐')
+@click.option('--data_enhance', default=False, help='训练时使用数据增强')
+def main(recover, lang, soft_align, data_enhance):
+    result_path = "./result/TransE2/%s/" % lang
+    data_path = "./data/%s/" % lang
+    m = MTransE(
+        entity_align_file=data_path + "ref_ent_ids",
+        all_entity_file=data_path + "ent_ids_all",
+        all_attr_file=data_path + "att2id_all",
+        all_value_file=data_path + "att_value2id_all",
+        all_triple_file=data_path + "att_triple_all",
+
+        checkpoint_path=result_path + "checkpoint.tar",
+        embedding_path=result_path + "ATentsembed.txt",
+        tensorboard_log_dir=result_path + "log/"
+    )
+    m.init_data()
+    if data_enhance:
+        m.append_align_triple()
+    if soft_align:
+        m.init_soft_align()
+    m.init_dataset()
+    m.init_model()
+    m.init_optimizer()
+    m.run_train(need_to_load_checkpoint=recover)
+
+
+if __name__ == '__main__':
+    main()
