@@ -715,14 +715,14 @@ class MTransE:
         logger.info("triple: " + str(len(self.train_triples)))
         train_dataloader_head = DataLoader(
             TrainDataset(self.train_triples, self.entity_count, self.attr_count, self.value_count, 1024, 'head-batch'),
-            batch_size=2048,
+            batch_size=1024,
             shuffle=False,
             num_workers=4,
             collate_fn=TrainDataset.collate_fn
         )
         train_dataloader_tail = DataLoader(
             TrainDataset(self.train_triples, self.entity_count, self.attr_count, self.value_count, 1024, 'tail-batch'),
-            batch_size=2048,
+            batch_size=1024,
             shuffle=False,
             num_workers=4,
             collate_fn=TrainDataset.collate_fn
@@ -731,7 +731,7 @@ class MTransE:
 
         align_dataloader = DataLoader(
             AlignDataset(self.t.train_seeds),
-            batch_size=2048,
+            batch_size=1024,
             shuffle=False,
             num_workers=4
         )
