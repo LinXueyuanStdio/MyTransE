@@ -201,6 +201,7 @@ class AlignModel(nn.Module):
         b = F.normalize(b, p=1, dim=2)
 
         loss = self.M * a - b
+        print(a.size(), b.size(), loss.size(), self.M.size())
         loss = F.logsigmoid(loss.sum(dim=1).mean())  # L1范数
         # loss = torch.sqrt(torch.square(loss).sum(dim=1)).mean()  # L2范数
 
