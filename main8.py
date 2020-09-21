@@ -607,6 +607,7 @@ class MTransE:
         self.embedding_path = embedding_path
 
         self.learning_rate = learning_rate
+        self.using_soft_align = False
 
     def init_data(self):
         self.t = Tester()
@@ -662,6 +663,7 @@ class MTransE:
         )
 
     def init_soft_align(self):
+        self.using_soft_align = True
         self.combination_threshold = 3  # 小于这个距离则模型认为已对齐
         self.combination_restriction = 50000  # 模型认为对齐的实体对的个数
         self.distance2entitiesPair: List[Tuple[int, Tuple[int, int]]] = []
@@ -793,7 +795,7 @@ class MTransE:
                                          subsampling_weight, mode, self.device)
             # 软对齐
             # 根据模型认为的对齐实体，修改 positive_sample，negative_sample，再训练一轮
-            if self.model_is_able_to_predict_align_entities:
+            if self.using_soft_align and self.model_is_able_to_predict_align_entities:
                 soft_positive_sample = self.soft_align(positive_sample, mode)
                 loss2 = self.model.train_step(self.model, self.optim,
                                               soft_positive_sample, negative_sample,
@@ -876,7 +878,7 @@ def train_model_for_fr_en(result_path="./result/TransE2/fr_en/"):
                 tensorboard_log_dir=result_path + "log/"
                 )
     m.init_data()
-    m.append_align_triple()
+    # m.append_align_triple()
     m.init_soft_align()
     m.init_dataset()
     m.init_model()
