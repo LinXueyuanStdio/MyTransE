@@ -164,7 +164,7 @@ print('language:' + lang)
 
 struct_embedding = 'result/' + lang + '/RTentsembed.pkl'
 # attribute_embedding = 'result/' + lang + '/ATentsembed.txt'
-attribute_embedding = 'res/entity2vec2900.bern'
+attribute_embedding = 'res/entity2vec3000.bern'
 print('拼接策略')
 # 拼接策略
 test.EAlinkstrategy(struct_embedding, attribute_embedding)  # 连接策略
