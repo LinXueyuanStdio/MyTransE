@@ -901,7 +901,6 @@ class MTransE:
                 ("loss", loss),
                 ("cost", round((time.time() - start_time)))
             ])
-            break
             if self.visualize:
                 self.summary_writer.add_scalar(tag='Loss/train', scalar_value=loss, global_step=step)
 
