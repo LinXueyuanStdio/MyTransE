@@ -139,9 +139,9 @@ class AttrTransE(nn.Module):
         return score
 
     def TransE(self, head, relation, tail, mode):
-        head = torch.norm(head, p=1, dim=2)  # TransE规定了必须用1范数来规范化
-        relation = torch.norm(relation, p=1, dim=2)
-        tail = torch.norm(tail, p=1, dim=2)
+        head = F.normalize(head, p=1, dim=2)  # TransE规定了必须用1范数来规范化
+        relation = F.normalize(relation, p=1, dim=2)
+        tail = F.normalize(tail, p=1, dim=2)
 
         if mode == 'head-batch':
             score = head + (relation - tail)
@@ -202,8 +202,8 @@ class AlignModel(nn.Module):
             dim=0,
             index=entity_b
         ).unsqueeze(1)
-        a = torch.norm(a, p=1, dim=2)
-        b = torch.norm(b, p=1, dim=2)
+        a = F.normalize(a, p=1, dim=2)
+        b = F.normalize(b, p=1, dim=2)
 
         loss = self.M * a - b
         loss = loss.sum(dim=1).mean()  # L1范数
