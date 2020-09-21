@@ -160,7 +160,7 @@ class KGEModel(nn.Module):
         return score
 
     def MTransE(self, head, relation, tail, mode):
-        print(mode, head.view(), relation.view(), tail.view())
+        print(mode, head.size(), relation.size(), tail.size())
 
         if mode == 'head-batch':
             score = head + (relation - tail)
