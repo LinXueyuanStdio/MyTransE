@@ -1,6 +1,6 @@
 
 triple_filename = "triple2id.txt"
-align_filename = "common_entities2id.txt"  # 左实体
+align_filename = "common_entities2id.txt"  # 训练集的左实体
 
 lang = "fr_en"
 
