@@ -31,8 +31,9 @@ torch.random.manual_seed(123456)
 
 # region model
 class KGEModel(nn.Module):
-    def __init__(self, train_seeds, nentity, nrelation, nvalue, hidden_dim, gamma, double_entity_embedding=False,
-                 double_relation_embedding=False):
+    def __init__(self, train_seeds,
+                 nentity, nrelation, nvalue,
+                 hidden_dim, gamma):
         super(KGEModel, self).__init__()
         # self.model_name = model_name
         self.nentity = nentity
@@ -50,36 +51,39 @@ class KGEModel(nn.Module):
             torch.Tensor([(self.gamma.item() + self.epsilon) / hidden_dim]),
             requires_grad=False
         )
-        self.entity_dim = hidden_dim * 2 if double_entity_embedding else hidden_dim
-        self.relation_dim = hidden_dim * 2 if double_relation_embedding else hidden_dim
-        self.value_dim = hidden_dim * 2 if double_entity_embedding else hidden_dim
+        self.entity_dim = hidden_dim
+        self.relation_dim = hidden_dim
+        self.value_dim = hidden_dim
 
         entity_weight = torch.zeros(nentity, self.entity_dim)
-        nn.init.uniform_(
-            tensor=entity_weight,
-            a=-self.embedding_range.item(),
-            b=self.embedding_range.item()
-        )
+        nn.init.normal_(entity_weight)
+        # nn.init.uniform_(
+        #     tensor=entity_weight,
+        #     a=-self.embedding_range.item(),
+        #     b=self.embedding_range.item()
+        # )
         for left_entity, right_entity in train_seeds:
             entity_weight[left_entity] = entity_weight[right_entity]
         self.entity_embedding = nn.Parameter(entity_weight)
-        # nn.init.normal_(self.entity_embedding)
 
         self.relation_embedding = nn.Parameter(torch.zeros(nrelation, self.relation_dim))
-        # nn.init.normal_(self.relation_embedding)
-        nn.init.uniform_(
-            tensor=self.relation_embedding,
-            a=-self.embedding_range.item(),
-            b=self.embedding_range.item()
-        )
+        nn.init.normal_(self.relation_embedding)
+        # nn.init.uniform_(
+        #     tensor=self.relation_embedding,
+        #     a=-self.embedding_range.item(),
+        #     b=self.embedding_range.item()
+        # )
 
         self.value_embedding = nn.Parameter(torch.zeros(nvalue, self.value_dim))
-        # nn.init.normal_(self.value_embedding)
-        nn.init.uniform_(
-            tensor=self.value_embedding,
-            a=-self.embedding_range.item(),
-            b=self.embedding_range.item()
-        )
+        nn.init.normal_(self.value_embedding)
+        # nn.init.uniform_(
+        #     tensor=self.value_embedding,
+        #     a=-self.embedding_range.item(),
+        #     b=self.embedding_range.item()
+        # )
+
+        self.M = nn.Parameter(torch.zeros(self.entity_dim, self.entity_dim))
+        nn.init.orthogonal_(self.M)  # 正交矩阵
 
     def forward(self, sample, mode='single'):
         if mode == 'single':
@@ -150,8 +154,18 @@ class KGEModel(nn.Module):
         else:
             raise ValueError('mode %s not supported' % mode)
 
-        score = self.TransE(head, relation, tail, mode)
+        score = self.MTransE(head, relation, tail, mode)
 
+        return score
+
+    def MTransE(self, head, relation, tail, mode):
+        print(mode, head.view(), relation.view(), tail.view())
+
+        if mode == 'head-batch':
+            score = head + (relation - tail)
+        else:
+            score = (head + relation) - tail
+        score = self.gamma.item() - torch.norm(score, p=1, dim=2)
         return score
 
     def TransE(self, head, relation, tail, mode):
@@ -791,6 +805,7 @@ class MTransE:
                 ("cost", round((time.time() - start_time))),
                 ("aligned", len(self.model_think_align_entities))
             ])
+            break
             if self.visualize:
                 summary_writer.add_scalar(tag='Loss/train', scalar_value=loss, global_step=step)
 
