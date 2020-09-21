@@ -201,7 +201,7 @@ class AlignModel(nn.Module):
         b = F.normalize(b, p=1, dim=2)
 
         loss = self.M * a - b
-        loss = loss.sum(dim=1).mean()  # L1范数
+        loss = F.logsigmoid(loss.sum(dim=1).mean())  # L1范数
         # loss = torch.sqrt(torch.square(loss).sum(dim=1)).mean()  # L2范数
 
         return loss
@@ -877,8 +877,8 @@ class MTransE:
             # 根据模型认为的对齐实体，修改 positive_sample，negative_sample，再训练一轮
             if self.using_soft_align and self.model_is_able_to_predict_align_entities:
                 soft_positive_sample = self.soft_align(positive_sample, mode)
-                loss_attr2, loss_align2 = self.train_step(soft_positive_sample, negative_sample, subsampling_weight,
-                                                          mode,
+                loss_attr2, loss_align2 = self.train_step(soft_positive_sample, negative_sample,
+                                                          subsampling_weight, mode,
                                                           entity_a, entity_b)
                 loss_attr = loss_attr + loss_attr2
                 loss_align = loss_align + loss_align2
