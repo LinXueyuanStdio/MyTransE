@@ -190,22 +190,23 @@ class AlignModel(nn.Module):
             self.entity_embedding,
             dim=0,
             index=entity_a
-        ).unsqueeze(1)
+        )
 
         b = torch.index_select(
             self.entity_embedding,
             dim=0,
             index=entity_b
-        ).unsqueeze(1)
-        a = F.normalize(a, p=1, dim=2)
-        b = F.normalize(b, p=1, dim=2)
+        )
+        a = F.normalize(a, p=1, dim=1)
+        b = F.normalize(b, p=1, dim=1)
 
-        loss = self.M * a - b
+        loss = a * self.M - b
         print(a.size(), b.size(), loss.size(), self.M.size())
         loss = F.logsigmoid(loss.sum(dim=1).mean())  # L1范数
         # loss = torch.sqrt(torch.square(loss).sum(dim=1)).mean()  # L2范数
 
         return loss
+
 
 # endregion
 # region 日志
