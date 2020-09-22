@@ -37,21 +37,102 @@ if torch.cuda.is_available():
 
 class AttrTransE(nn.Module):
     def __init__(self,
-                 entity_embedding,
-                 relation_embedding,
-                 value_embedding,
-                 gamma,
-                 embedding_range
+                 entity_count,
+                 attr_count,
+                 value_count,
+                 hidden_dim=200,
                  ):
         super(AttrTransE, self).__init__()
-        self.entity_embedding = entity_embedding
-        self.relation_embedding = relation_embedding
-        self.value_embedding = value_embedding
-        self.gamma = gamma
-        self.embedding_range = embedding_range
+        self.hidden_dim = hidden_dim
+        self.entity_count = entity_count
+        self.attr_count = attr_count
+        self.value_count = value_count
+        self.nentity = self.entity_count
+        self.nrelation = self.attr_count
+        self.nvalue = self.value_count
+        self.epsilon = 2.0
+
+        self.gamma = nn.Parameter(
+            torch.Tensor([1.0]),
+            requires_grad=False
+        )
+
+        self.embedding_range = nn.Parameter(
+            torch.Tensor([(self.gamma.item() + self.epsilon) / self.hidden_dim]),
+            requires_grad=False
+        )
+        self.entity_dim = self.hidden_dim
+        self.relation_dim = self.hidden_dim
+        self.value_dim = self.hidden_dim
+
+        entity_weight = torch.zeros(self.nentity, self.entity_dim)
+        nn.init.normal_(entity_weight)
+        # nn.init.uniform_(
+        #     tensor=entity_weight,
+        #     a=-self.embedding_range.item(),
+        #     b=self.embedding_range.item()
+        # )
+        for left_entity, right_entity in self.t.train_seeds:
+            entity_weight[left_entity] = entity_weight[right_entity]
+        self.entity_embedding = nn.Parameter(entity_weight)
+
+        self.relation_embedding = nn.Parameter(torch.zeros(self.nrelation, self.relation_dim))
+        nn.init.normal_(self.relation_embedding)
+        # nn.init.uniform_(
+        #     tensor=self.relation_embedding,
+        #     a=-self.embedding_range.item(),
+        #     b=self.embedding_range.item()
+        # )
+
+        self.value_embedding = nn.Parameter(torch.zeros(self.nvalue, self.value_dim))
+        nn.init.normal_(self.value_embedding)
+        # nn.init.uniform_(
+        #     tensor=self.value_embedding,
+        #     a=-self.embedding_range.item(),
+        #     b=self.embedding_range.item()
+        # )
+
+        self.M = nn.Parameter(torch.zeros(self.entity_dim, self.entity_dim))
+        nn.init.orthogonal_(self.M)  # 正交矩阵
+
+        self.bias = nn.Parameter(torch.zeros(self.entity_dim))
+        nn.init.normal_(self.bias)
 
     def forward(self, sample, mode='single'):
+        positive_negative_pair, entity_pair = sample
+        loss1 = self.get_TransE_loss(positive_negative_pair, mode)
+        loss2 = self.get_Align_loss(entity_pair)
+        return loss1 + loss2
+
+    def get_Align_loss(self, sample):
+        entity_a, entity_b = sample
+        self.entity_embedding = F.normalize(self.entity_embedding, p=2, dim=2)
+        ones = torch.ones(self.entity_dim, self.entity_dim, dtype=torch.float32)  # 200 * 200
+        diag = torch.eye(self.entity_dim, dtype=torch.float32)  # 200 * 200
+        loss_orth = ((self.M * (ones - diag)) ** 2).sum()
+        a = torch.index_select(
+            self.entity_embedding,
+            dim=0,
+            index=entity_a
+        )
+
+        b = torch.index_select(
+            self.entity_embedding,
+            dim=0,
+            index=entity_b
+        )
+        a = F.normalize(a, p=1, dim=1)
+        b = F.normalize(b, p=1, dim=1)
+        loss = a.matmul(self.M) - b
+        # loss = F.logsigmoid(loss.sum(dim=1).mean())  # L1范数
+        loss = torch.sqrt(torch.square(loss).sum(dim=1)).mean()  # L2范数
+        return loss + loss_orth
+
+    def get_TransE_loss(self, sample, mode='single'):
         positive_sample, negative_sample, subsampling_weight = sample
+        self.entity_embedding = F.normalize(self.entity_embedding, p=2, dim=2)
+        self.relation_embedding = F.normalize(self.relation_embedding, p=2, dim=2)
+        self.value_embedding = F.normalize(self.value_embedding, p=2, dim=2)
         negative_score = self.distance((positive_sample, negative_sample), mode=mode)
         negative_score = F.logsigmoid(-negative_score).mean(dim=1)
 
@@ -178,35 +259,6 @@ class AttrTransE(nn.Module):
 
         score = self.gamma.item() - score.sum(dim=2)
         return score
-
-
-class AlignModel(nn.Module):
-    def __init__(self, entity_embedding, M, bias):
-        super(AlignModel, self).__init__()
-        self.entity_embedding = entity_embedding
-        self.M = M
-        self.bias = bias
-
-    def forward(self, sample):
-        entity_a, entity_b = sample
-
-        a = torch.index_select(
-            self.entity_embedding,
-            dim=0,
-            index=entity_a
-        )
-
-        b = torch.index_select(
-            self.entity_embedding,
-            dim=0,
-            index=entity_b
-        )
-        a = F.normalize(a, p=1, dim=1)
-        b = F.normalize(b, p=1, dim=1)
-        loss = a.matmul(self.M) - b
-        # loss = F.logsigmoid(loss.sum(dim=1).mean())  # L1范数
-        loss = torch.sqrt(torch.square(loss).sum(dim=1)).mean()  # L2范数
-        return loss
 
 
 # endregion
@@ -471,7 +523,6 @@ _LOSS = "loss"
 
 
 def load_checkpoint(model: nn.Module, optim: optimizer.Optimizer,
-                    model2: nn.Module, optim2: optimizer.Optimizer,
                     checkpoint_path="./result/fr_en/checkpoint.tar") -> Tuple[int, int, float]:
     """Loads training checkpoint.
 
@@ -482,9 +533,7 @@ def load_checkpoint(model: nn.Module, optim: optimizer.Optimizer,
     """
     checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint[_MODEL_STATE_DICT])
-    model2.load_state_dict(checkpoint[_MODEL_STATE_DICT2])
     optim.load_state_dict(checkpoint[_OPTIMIZER_STATE_DICT])
-    optim2.load_state_dict(checkpoint[_OPTIMIZER_STATE_DICT2])
     start_epoch_id = checkpoint[_EPOCH] + 1
     step = checkpoint[_STEP] + 1
     best_score = checkpoint[_BEST_SCORE]
@@ -492,14 +541,11 @@ def load_checkpoint(model: nn.Module, optim: optimizer.Optimizer,
 
 
 def save_checkpoint(model: nn.Module, optim: optimizer.Optimizer,
-                    model2: nn.Module, optim2: optimizer.Optimizer,
                     epoch_id: int, step: int, best_score: float,
                     save_path="./result/fr_en/checkpoint.tar"):
     torch.save({
         _MODEL_STATE_DICT: model.state_dict(),
         _OPTIMIZER_STATE_DICT: optim.state_dict(),
-        _MODEL_STATE_DICT2: model2.state_dict(),
-        _OPTIMIZER_STATE_DICT2: optim2.state_dict(),
         _EPOCH: epoch_id,
         _STEP: step,
         _BEST_SCORE: best_score,
@@ -641,79 +687,15 @@ class MTransE:
         self.align_iterator = AlignIterator(align_dataloader)
 
     def init_model(self):
-        self.nentity = self.entity_count
-        self.nrelation = self.attr_count
-        self.nvalue = self.value_count
-        self.hidden_dim = 200
-        self.epsilon = 2.0
-
-        self.gamma = nn.Parameter(
-            torch.Tensor([1.0]),
-            requires_grad=False
-        )
-
-        self.embedding_range = nn.Parameter(
-            torch.Tensor([(self.gamma.item() + self.epsilon) / self.hidden_dim]),
-            requires_grad=False
-        )
-        self.entity_dim = self.hidden_dim
-        self.relation_dim = self.hidden_dim
-        self.value_dim = self.hidden_dim
-
-        entity_weight = torch.zeros(self.nentity, self.entity_dim)
-        nn.init.normal_(entity_weight)
-        # nn.init.uniform_(
-        #     tensor=entity_weight,
-        #     a=-self.embedding_range.item(),
-        #     b=self.embedding_range.item()
-        # )
-        for left_entity, right_entity in self.t.train_seeds:
-            entity_weight[left_entity] = entity_weight[right_entity]
-        self.entity_embedding = nn.Parameter(entity_weight)
-
-        self.relation_embedding = nn.Parameter(torch.zeros(self.nrelation, self.relation_dim))
-        nn.init.normal_(self.relation_embedding)
-        # nn.init.uniform_(
-        #     tensor=self.relation_embedding,
-        #     a=-self.embedding_range.item(),
-        #     b=self.embedding_range.item()
-        # )
-
-        self.value_embedding = nn.Parameter(torch.zeros(self.nvalue, self.value_dim))
-        nn.init.normal_(self.value_embedding)
-        # nn.init.uniform_(
-        #     tensor=self.value_embedding,
-        #     a=-self.embedding_range.item(),
-        #     b=self.embedding_range.item()
-        # )
-
-        self.M = nn.Parameter(torch.zeros(self.entity_dim, self.entity_dim))
-        nn.init.orthogonal_(self.M)  # 正交矩阵
-
-        self.bias = nn.Parameter(torch.zeros(self.entity_dim))
-        nn.init.normal_(self.bias)
-
-        self.attr_TransE = AttrTransE(
-            self.entity_embedding,
-            self.relation_embedding,
-            self.value_embedding,
-            self.gamma,
-            self.embedding_range
-        ).to(self.device)
-
-        self.align_model = AlignModel(
-            self.entity_embedding,
-            self.M,
-            self.bias
+        self.model = AttrTransE(
+            self.entity_count,
+            self.attr_count,
+            self.value_count
         ).to(self.device)
 
     def init_optimizer(self):
-        attr_parameter = list(filter(lambda p: p.requires_grad, self.attr_TransE.parameters())) + [
-            self.entity_embedding, self.relation_embedding, self.value_embedding
-        ]
-        self.optim = torch.optim.Adam(attr_parameter, lr=self.learning_rate)
-        self.optim2 = torch.optim.SGD(
-            filter(lambda p: p.requires_grad, self.align_model.parameters()),
+        self.optim = torch.optim.Adam(
+            filter(lambda p: p.requires_grad, self.model.parameters()),
             lr=self.learning_rate
         )
 
@@ -832,29 +814,22 @@ class MTransE:
     def train_step(self,
                    positive_sample, negative_sample, subsampling_weight, mode,
                    entity_a, entity_b):
-        self.attr_TransE.train()
-        # self.align_model.train()
+        self.model.train()
         self.optim.zero_grad()
-        # self.optim2.zero_grad()
 
         positive_sample = positive_sample.to(self.device)
         negative_sample = negative_sample.to(self.device)
         subsampling_weight = subsampling_weight.to(self.device)
-        # entity_a = entity_a.to(self.device)
-        # entity_b = entity_b.to(self.device)
+        entity_a = entity_a.to(self.device)
+        entity_b = entity_b.to(self.device)
         positive_negative_pair = (positive_sample, negative_sample, subsampling_weight)
-        # entity_pair = (entity_a, entity_b)
-        loss_attr = self.attr_TransE(positive_negative_pair, mode)
-        # loss_align = self.align_model(entity_pair)
-        loss_align = loss_attr  # TODO delete this line
+        entity_pair = (entity_a, entity_b)
+        pair = (positive_negative_pair, entity_pair)
+        loss = self.model(pair, mode)
 
-        loss_attr.backward()
-        # loss_align.backward()
-
+        loss.backward()
         self.optim.step()
-        # self.optim2.step()
-
-        return loss_attr.item(), loss_align.item()
+        return loss
 
     def run_train(self, need_to_load_checkpoint=True):
         logger.info("start training")
@@ -865,42 +840,37 @@ class MTransE:
         last_score = score
 
         if need_to_load_checkpoint:
-            _, init_step, score = load_checkpoint(self.attr_TransE, self.optim,
-                                                  self.align_model, self.optim2,
-                                                  self.checkpoint_path)
+            _, init_step, score = load_checkpoint(self.model, self.optim, self.checkpoint_path)
             last_score = score
 
         progbar = Progbar(max_step=total_steps - init_step)
         start_time = time.time()
         for step in range(init_step, total_steps):
             positive_sample, negative_sample, subsampling_weight, mode = next(self.train_iterator)
-            entity_a, entity_b = 1,2#next(self.align_iterator)
-            loss_attr, loss_align = self.train_step(positive_sample, negative_sample, subsampling_weight, mode,
-                                                    entity_a, entity_b)
+            entity_a, entity_b = 1, 2  # next(self.align_iterator)
+            loss = self.train_step(positive_sample, negative_sample, subsampling_weight, mode,
+                                   entity_a, entity_b)
             # 软对齐
             # 根据模型认为的对齐实体，修改 positive_sample，negative_sample，再训练一轮
             if self.using_soft_align and self.model_is_able_to_predict_align_entities:
                 soft_positive_sample = self.soft_align(positive_sample, mode)
-                loss_attr2, loss_align2 = self.train_step(soft_positive_sample, negative_sample,
-                                                          subsampling_weight, mode,
-                                                          entity_a, entity_b)
-                loss_attr = loss_attr + loss_attr2
-                loss_align = loss_align + loss_align2
+                loss2 = self.train_step(soft_positive_sample, negative_sample,
+                                        subsampling_weight, mode,
+                                        entity_a, entity_b)
+                loss = loss + loss2
 
             progbar.update(step - init_step + 1, [
-                ("loss_attr", loss_attr),
-                ("loss_align", loss_align),
+                ("loss", loss),
                 ("cost", round((time.time() - start_time)))
             ])
             if self.visualize:
-                self.summary_writer.add_scalar(tag='Loss/loss_attr', scalar_value=loss_attr, global_step=step)
-                self.summary_writer.add_scalar(tag='Loss/loss_align', scalar_value=loss_align, global_step=step)
+                self.summary_writer.add_scalar(tag='Loss/loss', scalar_value=loss, global_step=step)
 
             if step > init_step and step % test_steps == 0:
                 logger.info("\n计算距离中")
                 computing_time = time.time()
-                left_vec = self.t.get_vec2(self.entity_embedding, self.t.left_ids)
-                right_vec = self.t.get_vec2(self.entity_embedding, self.t.right_ids)
+                left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
+                right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
                 sim = spatial.distance.cdist(left_vec, right_vec, metric='euclidean')
                 logger.info("计算距离完成，用时 " + str(int(time.time() - computing_time)) + " 秒")
                 if self.using_soft_align:
@@ -916,7 +886,7 @@ class MTransE:
 
                 if self.visualize:
                     self.summary_writer.add_embedding(tag='Embedding',
-                                                      mat=self.entity_embedding,
+                                                      mat=self.model.entity_embedding,
                                                       metadata=self.entity_name_list,
                                                       global_step=step)
                     self.summary_writer.add_scalar(tag='Hits@1/left', scalar_value=hits_left[0][1], global_step=step)
@@ -931,17 +901,15 @@ class MTransE:
                                                    global_step=step)
                 if score > last_score:
                     last_score = score
-                    save_checkpoint(self.attr_TransE, self.optim,
-                                    self.align_model, self.optim2,
+                    save_checkpoint(self.model, self.optim,
                                     1, step, score, self.checkpoint_path)
-                    save_entity_embedding_list(self.entity_embedding, self.embedding_path)
+                    save_entity_embedding_list(self.model.entity_embedding, self.embedding_path)
 
     def run_test(self):
-        load_checkpoint(self.attr_TransE, self.optim,
-                        self.align_model, self.optim2, self.checkpoint_path)
+        load_checkpoint(self.model, self.optim, self.checkpoint_path)
         logger.info("\n属性消融实验")
-        left_vec = self.t.get_vec2(self.entity_embedding, self.t.left_ids)
-        right_vec = self.t.get_vec2(self.entity_embedding, self.t.right_ids)
+        left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
+        right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
         sim = spatial.distance.cdist(left_vec, right_vec, metric='euclidean')
         hits = self.t.get_hits(left_vec, right_vec, sim)
         hits_left = hits["left"]
