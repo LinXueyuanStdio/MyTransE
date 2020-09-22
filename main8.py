@@ -40,6 +40,7 @@ class AttrTransE(nn.Module):
                  entity_count,
                  attr_count,
                  value_count,
+                 train_seeds,
                  hidden_dim=200,
                  ):
         super(AttrTransE, self).__init__()
@@ -72,7 +73,7 @@ class AttrTransE(nn.Module):
         #     a=-self.embedding_range.item(),
         #     b=self.embedding_range.item()
         # )
-        for left_entity, right_entity in self.t.train_seeds:
+        for left_entity, right_entity in train_seeds:
             entity_weight[left_entity] = entity_weight[right_entity]
         self.entity_embedding = nn.Parameter(entity_weight)
 
@@ -690,7 +691,8 @@ class MTransE:
         self.model = AttrTransE(
             self.entity_count,
             self.attr_count,
-            self.value_count
+            self.value_count,
+            self.t.train_seeds
         ).to(self.device)
 
     def init_optimizer(self):
@@ -847,7 +849,7 @@ class MTransE:
         start_time = time.time()
         for step in range(init_step, total_steps):
             positive_sample, negative_sample, subsampling_weight, mode = next(self.train_iterator)
-            entity_a, entity_b = 1, 2  # next(self.align_iterator)
+            entity_a, entity_b = next(self.align_iterator)
             loss = self.train_step(positive_sample, negative_sample, subsampling_weight, mode,
                                    entity_a, entity_b)
             # 软对齐
@@ -902,7 +904,8 @@ class MTransE:
                 if score > last_score:
                     last_score = score
                     save_checkpoint(self.model, self.optim,
-                                    1, step, score, self.checkpoint_path)
+                                    1, step, score,
+                                    self.checkpoint_path)
                     save_entity_embedding_list(self.model.entity_embedding, self.embedding_path)
 
     def run_test(self):
