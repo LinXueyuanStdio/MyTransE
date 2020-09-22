@@ -98,6 +98,8 @@ class AttrTransE(nn.Module):
 
         self.bias = nn.Parameter(torch.zeros(self.entity_dim))
         nn.init.normal_(self.bias)
+        self.ones = torch.ones(self.entity_dim, self.entity_dim, dtype=torch.float32)  # 200 * 200
+        self.diag = torch.eye(self.entity_dim, dtype=torch.float32)  # 200 * 200
 
     def forward(self, sample, mode='single'):
         positive_negative_pair, entity_pair = sample
@@ -108,9 +110,7 @@ class AttrTransE(nn.Module):
     def get_Align_loss(self, sample):
         entity_a, entity_b = sample
         F.normalize(self.entity_embedding, p=2, dim=1)
-        ones = torch.ones(self.entity_dim, self.entity_dim, dtype=torch.float32)  # 200 * 200
-        diag = torch.eye(self.entity_dim, dtype=torch.float32)  # 200 * 200
-        loss_orth = ((self.M * (ones - diag)) ** 2).sum()
+        loss_orth = ((self.M * (self.ones - self.diag)) ** 2).sum()
         a = torch.index_select(
             self.entity_embedding,
             dim=0,
