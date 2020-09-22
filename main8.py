@@ -950,7 +950,7 @@ def test_model():
 @click.option('--recover', default=False, help='使用上一次训练的模型')
 @click.option('--lang', default='fr_en', help='使用的数据集')
 @click.option('--soft_align', default=False, help='训练时使用软对齐')
-@click.option('--data_enhance', default=False, help='训练时使用数据增强')
+@click.option('--data_enhance', default=True, help='训练时使用数据增强')
 @click.option('--visualize', default=False, help='训练时可视化')
 def main(recover, lang, soft_align, data_enhance, visualize):
     result_path = "./result/TransE2/%s/" % lang
