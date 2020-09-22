@@ -831,23 +831,24 @@ class MTransE:
         self.attr_TransE.train()
         self.align_model.train()
         self.optim.zero_grad()
-        self.optim2.zero_grad()
+        # self.optim2.zero_grad()
 
         positive_sample = positive_sample.to(self.device)
         negative_sample = negative_sample.to(self.device)
         subsampling_weight = subsampling_weight.to(self.device)
-        entity_a = entity_a.to(self.device)
-        entity_b = entity_b.to(self.device)
+        # entity_a = entity_a.to(self.device)
+        # entity_b = entity_b.to(self.device)
         positive_negative_pair = (positive_sample, negative_sample, subsampling_weight)
-        entity_pair = (entity_a, entity_b)
+        # entity_pair = (entity_a, entity_b)
         loss_attr = self.attr_TransE(positive_negative_pair, mode)
-        loss_align = self.align_model(entity_pair)
+        # loss_align = self.align_model(entity_pair)
+        loss_align = loss_attr  # TODO delete this line
 
         loss_attr.backward()
-        loss_align.backward()
+        # loss_align.backward()
 
         self.optim.step()
-        self.optim2.step()
+        # self.optim2.step()
 
         return loss_attr.item(), loss_align.item()
 
