@@ -98,8 +98,10 @@ class AttrTransE(nn.Module):
 
         self.bias = nn.Parameter(torch.zeros(self.entity_dim))
         nn.init.normal_(self.bias)
-        self.ones = torch.ones(self.entity_dim, self.entity_dim, dtype=torch.float32)  # 200 * 200
-        self.diag = torch.eye(self.entity_dim, dtype=torch.float32)  # 200 * 200
+        self.ones = nn.Parameter(torch.ones(self.entity_dim, self.entity_dim, dtype=torch.float32),
+                                 requires_grad=False)  # 200 * 200
+        self.diag = nn.Parameter(torch.eye(self.entity_dim, dtype=torch.float32,
+                                 requires_grad=False))  # 200 * 200
 
     def forward(self, sample, mode='single'):
         positive_negative_pair, entity_pair = sample
