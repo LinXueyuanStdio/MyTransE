@@ -666,15 +666,15 @@ class MTransE:
         train_dataloader_head = DataLoader(
             TrainDataset(self.train_triples, self.entity_count, self.attr_count, self.value_count, 1024, 'head-batch'),
             batch_size=1024,
-            shuffle=False,
-            num_workers=4,
+            shuffle=True,
+            num_workers=6,
             collate_fn=TrainDataset.collate_fn
         )
         train_dataloader_tail = DataLoader(
             TrainDataset(self.train_triples, self.entity_count, self.attr_count, self.value_count, 1024, 'tail-batch'),
             batch_size=1024,
-            shuffle=False,
-            num_workers=4,
+            shuffle=True,
+            num_workers=6,
             collate_fn=TrainDataset.collate_fn
         )
         self.train_iterator = BidirectionalOneShotIterator(train_dataloader_head, train_dataloader_tail)
@@ -684,8 +684,8 @@ class MTransE:
         align_dataloader = DataLoader(
             AlignDataset(self.t.train_seeds),
             batch_size=1024,
-            shuffle=False,
-            num_workers=4
+            shuffle=True,
+            num_workers=6
         )
         self.align_iterator = AlignIterator(align_dataloader)
 
