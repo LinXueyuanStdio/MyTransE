@@ -864,7 +864,7 @@ class MTransE:
         start_time = time.time()
         for step in range(init_step, total_steps):
             positive_sample, negative_sample, subsampling_weight, mode = next(self.train_iterator)
-            entity_a, entity_b = next(self.align_iterator)
+            entity_a, entity_b = 1,2#next(self.align_iterator)
             loss = self.train_step(positive_sample, negative_sample, subsampling_weight, mode,
                                    entity_a, entity_b)
             # 软对齐
