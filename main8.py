@@ -5,8 +5,8 @@ from __future__ import print_function
 import _thread
 import sys
 import time
+import random
 from math import exp
-from random import random
 from typing import List, Tuple, Set
 
 from scipy import spatial
@@ -26,7 +26,11 @@ import logging
 import click
 
 tf.io.gfile = tb.compat.tensorflow_stub.io.gfile
-torch.random.manual_seed(123456)
+random.seed(1234)
+np.random.seed(1234)
+torch.manual_seed(1234)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(1234)
 
 
 # region model
@@ -704,10 +708,10 @@ class MTransE:
         ).to(self.device)
 
     def init_optimizer(self):
-        self.optim = torch.optim.Adam(
-            filter(lambda p: p.requires_grad, self.attr_TransE.parameters()),
-            lr=self.learning_rate
-        )
+        attr_parameter = list(filter(lambda p: p.requires_grad, self.attr_TransE.parameters())) + [
+            self.entity_embedding, self.relation_embedding, self.value_embedding
+        ]
+        self.optim = torch.optim.Adam(attr_parameter, lr=self.learning_rate)
         self.optim2 = torch.optim.SGD(
             filter(lambda p: p.requires_grad, self.align_model.parameters()),
             lr=self.learning_rate
@@ -829,7 +833,7 @@ class MTransE:
                    positive_sample, negative_sample, subsampling_weight, mode,
                    entity_a, entity_b):
         self.attr_TransE.train()
-        self.align_model.train()
+        # self.align_model.train()
         self.optim.zero_grad()
         # self.optim2.zero_grad()
 
