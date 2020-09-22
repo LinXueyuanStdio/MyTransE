@@ -106,8 +106,9 @@ class AttrTransE(nn.Module):
     def forward(self, sample, mode='single'):
         positive_negative_pair, entity_pair = sample
         loss1 = self.get_TransE_loss(positive_negative_pair, mode)
-        loss2 = self.get_Align_loss(entity_pair)
-        return loss1 + loss2
+        # loss2 = self.get_Align_loss(entity_pair)
+        # return loss1 + loss2
+        return loss1
 
     def get_Align_loss(self, sample):
         entity_a, entity_b = sample
