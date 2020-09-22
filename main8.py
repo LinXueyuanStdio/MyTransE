@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import _thread
 import sys
+import os
 import time
 import random
 from math import exp
@@ -591,6 +592,12 @@ def read_triple(triple_path):
     return list(triple)
 
 
+def save_triple(triples, triple_path):
+    with open(triple_path, 'w') as fr:
+        for triple in triples:
+            fr.write("%d\t%d\t%d\n" % (triple[0], triple[2], triple[1]))
+
+
 def append_align_triple(triple: List[Tuple[int, int, int]], entity_align_list: List[Tuple[int, int]]):
     # 使用对齐实体替换头节点，构造属性三元组数据，从而达到利用对齐实体数据的目的
     align_set = {}
@@ -649,6 +656,7 @@ class MTransE:
         self.entity_list, self.entity_name_list = read_ids_and_names(self.all_entity_file)
         self.attr_list, _ = read_ids_and_names(self.all_attr_file)
         self.value_list, _ = read_ids_and_names(self.all_value_file)
+        self.all_triple_file_ext = self.all_triple_file + "_ext"
         self.train_triples = read_triple(self.all_triple_file)
 
         self.entity_count = len(self.entity_list)
@@ -660,7 +668,11 @@ class MTransE:
                     + " value: " + str(self.value_count))
 
     def append_align_triple(self):
-        self.train_triples = append_align_triple(self.train_triples, self.t.train_seeds)
+        if os.path.exists(self.all_triple_file_ext):
+            self.train_triples = read_triple(self.all_triple_file_ext)
+        else:
+            self.train_triples = append_align_triple(self.train_triples, self.t.train_seeds)
+            save_triple(self.train_triples, self.all_triple_file_ext)
 
     def init_dataset(self):
         logger.info("triple: " + str(len(self.train_triples)))
