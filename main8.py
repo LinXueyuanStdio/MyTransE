@@ -135,9 +135,9 @@ class AttrTransE(nn.Module):
 
     def get_TransE_loss(self, sample, mode='single'):
         positive_sample, negative_sample, subsampling_weight = sample
-        F.normalize(self.entity_embedding, p=2, dim=1)
-        F.normalize(self.relation_embedding, p=2, dim=1)
-        F.normalize(self.value_embedding, p=2, dim=1)
+        # F.normalize(self.entity_embedding, p=2, dim=1)
+        # F.normalize(self.relation_embedding, p=2, dim=1)
+        # F.normalize(self.value_embedding, p=2, dim=1)
         negative_score = self.distance((positive_sample, negative_sample), mode=mode)
         negative_score = F.logsigmoid(-negative_score).mean(dim=1)
 
