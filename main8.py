@@ -704,7 +704,7 @@ class Tester:
             dim=0,
             index=all_entity_ids
         ).view(-1, 200)
-        all_entity_vec = all_entity_vec * orth.transpose(0, 1)
+        all_entity_vec = all_entity_vec.matmul(orth.transpose(0, 1))
         return all_entity_vec.cpu().detach().numpy()
 
     def calculate(self, top_k=(1, 10, 50, 100)):
