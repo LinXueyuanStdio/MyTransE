@@ -195,7 +195,7 @@ class KGEModel(nn.Module):
             # output = self.layer3(output)
             # loss = output - b
             # a.matmul(b.transpose(0,2))
-            # # loss = F.logsigmoid(loss.sum(dim=1).mean())  # L1范数
+            # loss = F.logsigmoid(loss.sum(dim=1).mean())  # L1范数
             # loss = torch.sqrt(torch.square(loss).sum(dim=1)).mean()  # L2范数
 
             # F.normalize(self.entity_embedding, p=2, dim=1)

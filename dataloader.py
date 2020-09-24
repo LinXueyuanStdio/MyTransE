@@ -18,7 +18,7 @@ class AlignDataset(Dataset):
         return len(self.seeds)
 
     def __getitem__(self, idx):
-        return self.seeds[idx]
+        return self.seeds[idx % len(self.seeds)]
 
 
 class AlignIterator(object):
