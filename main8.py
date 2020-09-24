@@ -189,7 +189,7 @@ class KGEModel(nn.Module):
             raise ValueError('mode %s not supported' % mode)
 
         if mode == "align":
-            loss = 1 - F.cosine_similarity(a, b).abs()
+            loss = (1 - F.cosine_similarity(a, b).abs()).sum()
             # output = self.layer1(a.matmul(self.M))
             # output = self.layer2(output)
             # output = self.layer3(output)
