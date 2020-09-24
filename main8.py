@@ -99,6 +99,9 @@ class KGEModel(nn.Module):
                                  requires_grad=False)  # 200 * 200
         self.diag = nn.Parameter(torch.eye(self.entity_dim, dtype=torch.float32,
                                            requires_grad=False))  # 200 * 200
+        self.layer1 = nn.Linear(self.entity_dim, 2 * self.entity_dim)
+        self.layer2 = nn.Linear(2 * self.entity_dim, 2 * self.entity_dim)
+        self.layer3 = nn.Linear(2 * self.entity_dim, self.entity_dim)
 
     def forward(self, sample, mode='single'):
         if mode == 'single':
@@ -180,19 +183,23 @@ class KGEModel(nn.Module):
                 dim=0,
                 index=entity_b
             )
-            a = F.normalize(a, p=1, dim=1)
-            b = F.normalize(b, p=1, dim=1)
+            # a = F.normalize(a, p=1, dim=1)
+            # b = F.normalize(b, p=1, dim=1)
         else:
             raise ValueError('mode %s not supported' % mode)
 
         if mode == "align":
-            loss = a.matmul(self.M) - b
+            output = self.layer1(a.matmul(self.M))
+            output = self.layer2(output)
+            output = self.layer3(output)
+            loss = output - b
             # loss = F.logsigmoid(loss.sum(dim=1).mean())  # L1范数
             loss = torch.sqrt(torch.square(loss).sum(dim=1)).mean()  # L2范数
 
-            F.normalize(self.entity_embedding, p=2, dim=1)
-            loss_orth = ((self.M * (self.ones - self.diag)) ** 2).sum()
-            return loss + loss_orth
+            # F.normalize(self.entity_embedding, p=2, dim=1)
+            # loss_orth = ((self.M * (self.ones - self.diag)) ** 2).sum()
+            # return loss + loss_orth
+            return loss
         else:
             score = self.TransE(head, relation, tail, mode)
             return score
