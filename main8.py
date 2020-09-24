@@ -696,6 +696,17 @@ class Tester:
         ).view(-1, 200).cpu().detach().numpy()
         return all_entity_vec
 
+    @staticmethod
+    def get_vec3(entities_embedding, orth: torch.Tensor, id_list: List[int], device="cuda"):
+        all_entity_ids = torch.LongTensor(id_list).view(-1).to(device)
+        all_entity_vec = torch.index_select(
+            entities_embedding,
+            dim=0,
+            index=all_entity_ids
+        ).view(-1, 200)
+        all_entity_vec = all_entity_vec * orth.transpose(0, 1)
+        return all_entity_vec.cpu().detach().numpy()
+
     def calculate(self, top_k=(1, 10, 50, 100)):
         Lvec = np.array([self.linkEmbedding[e1] for e1, e2 in self.test_seeds])
         Rvec = np.array([self.linkEmbedding[e2] for e1, e2 in self.test_seeds])
@@ -1111,7 +1122,7 @@ class MTransE:
             if step > init_step and step % test_steps == 0:
                 logger.info("\n计算距离中")
                 computing_time = time.time()
-                left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
+                left_vec = self.t.get_vec3(self.model.entity_embedding, self.model.M, self.t.left_ids)
                 right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
                 sim = spatial.distance.cdist(left_vec, right_vec, metric='euclidean')
                 logger.info("计算距离完成，用时 " + str(int(time.time() - computing_time)) + " 秒")
@@ -1151,7 +1162,7 @@ class MTransE:
     def run_test(self):
         load_checkpoint(self.model, self.optim, self.checkpoint_path)
         logger.info("\n属性消融实验")
-        left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
+        left_vec = self.t.get_vec3(self.model.entity_embedding, self.model.M, self.t.left_ids)
         right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
         sim = spatial.distance.cdist(left_vec, right_vec, metric='euclidean')
         hits = self.t.get_hits(left_vec, right_vec, sim)
