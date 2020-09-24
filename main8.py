@@ -759,6 +759,15 @@ class Tester:
             "right": right,
         }
 
+    @staticmethod
+    def get_score(hits):
+        hits_left = hits["left"]
+        hits_right = hits["right"]
+        left_hits_10 = hits_left[2][1]
+        right_hits_10 = hits_right[2][1]
+        score = (left_hits_10 + right_hits_10) / 2
+        return score
+
 
 # endregion
 
@@ -1123,21 +1132,23 @@ class MTransE:
                 logger.info("\n计算距离中")
                 computing_time = time.time()
                 left_vec = self.t.get_vec3(self.model.entity_embedding, self.model.M, self.t.left_ids)
+                left_vec2 = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
                 right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
                 sim = spatial.distance.cdist(left_vec, right_vec, metric='euclidean')
+                sim2 = spatial.distance.cdist(left_vec2, right_vec, metric='euclidean')
                 logger.info("计算距离完成，用时 " + str(int(time.time() - computing_time)) + " 秒")
                 if self.using_soft_align:
                     self.do_combine("step-" + str(step), sim)
                 logger.info("属性消融实验")
                 hits = self.t.get_hits(left_vec, right_vec, sim)
-                hits_left = hits["left"]
-                hits_right = hits["right"]
-                left_hits_10 = hits_left[2][1]
-                right_hits_10 = hits_right[2][1]
-                score = (left_hits_10 + right_hits_10) / 2
-                logger.info("score = " + str(score))
+                score = self.t.get_score(hits)
+                hits2 = self.t.get_hits(left_vec2, right_vec, sim2)
+                score2 = self.t.get_score(hits2)
+                logger.info("score = " + str(score) + ", score = " + str(score2))
 
                 if self.visualize:
+                    hits_left = hits["left"]
+                    hits_right = hits["right"]
                     self.summary_writer.add_embedding(tag='Embedding',
                                                       mat=self.model.entity_embedding,
                                                       metadata=self.entity_name_list,
@@ -1162,15 +1173,11 @@ class MTransE:
     def run_test(self):
         load_checkpoint(self.model, self.optim, self.checkpoint_path)
         logger.info("\n属性消融实验")
-        left_vec = self.t.get_vec3(self.model.entity_embedding, self.model.M, self.t.left_ids)
+        left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
         right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
         sim = spatial.distance.cdist(left_vec, right_vec, metric='euclidean')
         hits = self.t.get_hits(left_vec, right_vec, sim)
-        hits_left = hits["left"]
-        hits_right = hits["right"]
-        left_hits_10 = hits_left[2][1]
-        right_hits_10 = hits_right[2][1]
-        score = (left_hits_10 + right_hits_10) / 2
+        score = self.t.get_score(hits)
         logger.info("score = " + str(score))
 
 
