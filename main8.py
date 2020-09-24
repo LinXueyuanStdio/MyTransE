@@ -1141,9 +1141,9 @@ class MTransE:
                     self.do_combine("step-" + str(step), sim)
                 logger.info("属性消融实验")
                 hits = self.t.get_hits(left_vec, right_vec, sim)
-                score = self.t.get_score(hits)
+                score2 = self.t.get_score(hits)
                 hits2 = self.t.get_hits(left_vec2, right_vec, sim2)
-                score2 = self.t.get_score(hits2)
+                score = self.t.get_score(hits2)
                 logger.info("score = " + str(score) + ", score = " + str(score2))
 
                 if self.visualize:
