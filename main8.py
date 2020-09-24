@@ -1171,7 +1171,7 @@ class MTransE:
                     self.summary_writer.add_scalar(tag='Hits@100/right', scalar_value=hits_right[3][1],
                                                    global_step=step)
                 if score > last_score:
-                    logger.info("保存 (" + score + ">" + last_score + ")")
+                    logger.info("保存 (" + str(score) + ">" + str(last_score) + ")")
                     last_score = score
                     save_checkpoint(self.model, self.optim,
                                     1, step, score,
