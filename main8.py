@@ -248,8 +248,8 @@ class KGEModel(nn.Module):
         positive_sample = positive_sample.to(device)
         negative_sample = negative_sample.to(device)
         subsampling_weight = subsampling_weight.to(device)
-        # entity_a = entity_a.to(device)
-        # entity_b = entity_b.to(device)
+        entity_a = entity_a.to(device)
+        entity_b = entity_b.to(device)
 
         negative_score = model((positive_sample, negative_sample), mode=mode)
         negative_score = F.logsigmoid(-negative_score).mean(dim=1)
@@ -260,11 +260,11 @@ class KGEModel(nn.Module):
         positive_sample_loss = - (subsampling_weight * positive_score).sum() / subsampling_weight.sum()
         negative_sample_loss = - (subsampling_weight * negative_score).sum() / subsampling_weight.sum()
 
-        # align_score = model((entity_a, entity_b), mode="align")
-        # align_score = F.logsigmoid(align_score).sum()
+        align_score = model((entity_a, entity_b), mode="align")
+        align_score = F.logsigmoid(align_score).sum()
 
-        loss = (positive_sample_loss + negative_sample_loss) / 2
-        # loss = (positive_sample_loss + negative_sample_loss + align_score) / 2
+        # loss = (positive_sample_loss + negative_sample_loss) / 2
+        loss = (positive_sample_loss + negative_sample_loss + align_score) / 2
         loss.backward()
         optimizer.step()
 
@@ -1088,7 +1088,8 @@ class MTransE:
         start_time = time.time()
         for step in range(init_step, total_steps):
             positive_sample, negative_sample, subsampling_weight, mode = next(self.train_iterator)
-            entity_a, entity_b = 1, 2  # next(self.align_iterator)
+            entity_a, entity_b = next(self.align_iterator)
+            # entity_a, entity_b = 1, 2
             loss = self.train_step(positive_sample, negative_sample, subsampling_weight, mode,
                                    entity_a, entity_b)
             # 软对齐
