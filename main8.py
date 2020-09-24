@@ -201,6 +201,17 @@ class KGEModel(nn.Module):
             # return loss + loss_orth
             return loss
         else:
+            output = self.layer1(head.matmul(self.M))
+            output = self.layer2(output)
+            head = self.layer3(output)
+
+            output = self.layer1(relation.matmul(self.M))
+            output = self.layer2(output)
+            relation = self.layer3(output)
+
+            output = self.layer1(tail.matmul(self.M))
+            output = self.layer2(output)
+            tail = self.layer3(output)
             score = self.TransE(head, relation, tail, mode)
             return score
 
