@@ -941,15 +941,15 @@ class MTransE:
         train_dataloader_head = DataLoader(
             TrainDataset(self.train_triples, self.entity_count, self.attr_count, self.value_count, 1024, 'head-batch'),
             batch_size=1024,
-            shuffle=True,
-            num_workers=6,
+            shuffle=False,
+            num_workers=4,
             collate_fn=TrainDataset.collate_fn
         )
         train_dataloader_tail = DataLoader(
             TrainDataset(self.train_triples, self.entity_count, self.attr_count, self.value_count, 1024, 'tail-batch'),
             batch_size=1024,
-            shuffle=True,
-            num_workers=6,
+            shuffle=False,
+            num_workers=4,
             collate_fn=TrainDataset.collate_fn
         )
         self.train_iterator = BidirectionalOneShotIterator(train_dataloader_head, train_dataloader_tail)
@@ -958,7 +958,7 @@ class MTransE:
         logger.info("test-align: " + str(len(self.t.test_seeds)))
         align_dataloader = DataLoader(
             AlignDataset(self.t.train_seeds),
-            batch_size=1024,
+            batch_size=500,
             shuffle=True,
             num_workers=6
         )
@@ -971,7 +971,7 @@ class MTransE:
             nrelation=self.attr_count,
             nvalue=self.value_count,
             hidden_dim=200,
-            gamma=24.0,
+            gamma=1.0,
         ).to(self.device)
 
     def init_optimizer(self):
@@ -1171,6 +1171,7 @@ class MTransE:
                     self.summary_writer.add_scalar(tag='Hits@100/right', scalar_value=hits_right[3][1],
                                                    global_step=step)
                 if score > last_score:
+                    logger.info("保存 (" + score + ">" + last_score + ")")
                     last_score = score
                     save_checkpoint(self.model, self.optim,
                                     1, step, score,
