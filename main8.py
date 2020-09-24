@@ -189,29 +189,32 @@ class KGEModel(nn.Module):
             raise ValueError('mode %s not supported' % mode)
 
         if mode == "align":
-            output = self.layer1(a.matmul(self.M))
-            output = self.layer2(output)
-            output = self.layer3(output)
-            loss = output - b
-            # loss = F.logsigmoid(loss.sum(dim=1).mean())  # L1范数
-            loss = torch.sqrt(torch.square(loss).sum(dim=1)).mean()  # L2范数
+            loss = 1 - F.cosine_similarity(a, b).abs()
+            # output = self.layer1(a.matmul(self.M))
+            # output = self.layer2(output)
+            # output = self.layer3(output)
+            # loss = output - b
+            # a.matmul(b.transpose(0,2))
+            # # loss = F.logsigmoid(loss.sum(dim=1).mean())  # L1范数
+            # loss = torch.sqrt(torch.square(loss).sum(dim=1)).mean()  # L2范数
 
             # F.normalize(self.entity_embedding, p=2, dim=1)
             # loss_orth = ((self.M * (self.ones - self.diag)) ** 2).sum()
             # return loss + loss_orth
             return loss
         else:
-            output = self.layer1(head.matmul(self.M))
-            output = self.layer2(output)
-            head = self.layer3(output)
+            # output = self.layer1(head.matmul(self.M))
+            # output = self.layer2(output)
+            # head = self.layer3(output)
+            #
+            # output = self.layer1(relation.matmul(self.M))
+            # output = self.layer2(output)
+            # relation = self.layer3(output)
+            #
+            # output = self.layer1(tail.matmul(self.M))
+            # output = self.layer2(output)
+            # tail = self.layer3(output)
 
-            output = self.layer1(relation.matmul(self.M))
-            output = self.layer2(output)
-            relation = self.layer3(output)
-
-            output = self.layer1(tail.matmul(self.M))
-            output = self.layer2(output)
-            tail = self.layer3(output)
             score = self.TransE(head, relation, tail, mode)
             return score
 
