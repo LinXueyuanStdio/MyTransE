@@ -97,8 +97,8 @@ class KGEModel(nn.Module):
         nn.init.normal_(self.bias)
         self.ones = nn.Parameter(torch.ones(self.entity_dim, self.entity_dim, dtype=torch.float32),
                                  requires_grad=False)  # 200 * 200
-        self.diag = nn.Parameter(torch.eye(self.entity_dim, dtype=torch.float32,
-                                           requires_grad=False))  # 200 * 200
+        self.diag = nn.Parameter(torch.eye(self.entity_dim, dtype=torch.float32),
+                                 requires_grad=False)  # 200 * 200
         self.layer1 = nn.Linear(self.entity_dim, 2 * self.entity_dim)
         self.layer2 = nn.Linear(2 * self.entity_dim, 2 * self.entity_dim)
         self.layer3 = nn.Linear(2 * self.entity_dim, self.entity_dim)
@@ -985,7 +985,7 @@ class MTransE:
             nrelation=self.attr_count,
             nvalue=self.value_count,
             hidden_dim=200,
-            gamma=1.0,
+            gamma=24.0,
         ).to(self.device)
 
     def init_optimizer(self):
