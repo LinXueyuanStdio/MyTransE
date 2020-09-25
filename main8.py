@@ -284,7 +284,7 @@ class KGEModel(nn.Module):
         # align_score = model((entity_a, entity_b), mode="align")
         # align_score = F.logsigmoid(align_score).sum()
 
-        loss = (positive_sample_loss + negative_sample_loss) / 2
+        loss = (100 * torch.exp(positive_sample_loss) + negative_sample_loss) / 2
         # loss = (positive_sample_loss + negative_sample_loss + align_score) / 2
         loss.backward()
         optimizer.step()
