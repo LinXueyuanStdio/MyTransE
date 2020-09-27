@@ -491,10 +491,10 @@ class KGEModel(nn.Module):
         positive_sample_loss = - (subsampling_weight * positive_score).sum() / subsampling_weight.sum()
         negative_sample_loss = - (subsampling_weight * negative_score).sum() / subsampling_weight.sum()
 
-        align_negative_score = model((align_positive_sample, align_negative_sample), mode=align_mode).abs()
+        align_negative_score = model((align_positive_sample, align_negative_sample), mode=align_mode)
         align_negative_score = F.logsigmoid(-align_negative_score).mean(dim=1)
 
-        align_positive_score = model(align_positive_sample, mode="align-single").abs()
+        align_positive_score = model(align_positive_sample, mode="align-single")
         align_positive_score = F.logsigmoid(align_positive_score).squeeze(dim=1)
 
         align_positive_sample_loss = - (
@@ -502,12 +502,13 @@ class KGEModel(nn.Module):
         align_negative_sample_loss = - (
                 align_subsampling_weight * align_negative_score).sum() / align_subsampling_weight.sum()
 
-        loss = (positive_sample_loss + negative_sample_loss
-                + align_positive_sample_loss + align_negative_sample_loss) / 5
+        align_loss = (align_positive_sample_loss + align_negative_sample_loss) / 2
+        raw_loss = (positive_sample_loss + negative_sample_loss) / 2
+        loss = (raw_loss + align_loss) / 2
         loss.backward()
         optimizer.step()
 
-        return loss.item()
+        return loss.item(), raw_loss.item(), align_loss.item()
 
 
 class AttrTransE(nn.Module):
@@ -1359,19 +1360,21 @@ class MTransE:
                 self.align_iterator)
             # entity_a, entity_b = next(self.align_iterator)
             # entity_a, entity_b = 1, 2
-            loss = self.train_step(positive_sample, negative_sample, subsampling_weight, mode,
+            loss, TransE_loss, align_loss = self.train_step(positive_sample, negative_sample, subsampling_weight, mode,
                                    align_positive_sample, align_negative_sample, align_subsampling_weight, align_mode)
             # 软对齐
             # 根据模型认为的对齐实体，修改 positive_sample，negative_sample，再训练一轮
             if self.using_soft_align and self.model_is_able_to_predict_align_entities:
                 soft_positive_sample = self.soft_align(positive_sample, mode)
-                loss2 = self.train_step(soft_positive_sample, negative_sample, subsampling_weight, mode,
+                loss2, _, _ = self.train_step(soft_positive_sample, negative_sample, subsampling_weight, mode,
                                         align_positive_sample, align_negative_sample, align_subsampling_weight,
                                         align_mode)
                 loss = loss + loss2
 
             progbar.update(step - init_step + 1, [
                 ("loss", loss),
+                ("align", align_loss),
+                ("TransE", TransE_loss),
                 ("cost", round((time.time() - start_time)))
             ])
             if self.visualize:
