@@ -491,15 +491,11 @@ class KGEModel(nn.Module):
         positive_sample_loss = - (subsampling_weight * positive_score).sum() / subsampling_weight.sum()
         negative_sample_loss = - (subsampling_weight * negative_score).sum() / subsampling_weight.sum()
 
-        print("subsampling", subsampling_weight.size())
-        print("align subsampling", align_subsampling_weight.size())
         align_negative_score = model((align_positive_sample, align_negative_sample), mode=align_mode).abs()
         align_negative_score = F.logsigmoid(-align_negative_score).mean(dim=1)
 
         align_positive_score = model(align_positive_sample, mode="align-single").abs()
         align_positive_score = F.logsigmoid(align_positive_score).squeeze(dim=1)
-        print("align score size", align_negative_score.size(), align_positive_score.size())
-        print("score size", negative_score.size(), positive_score.size())
 
         align_positive_sample_loss = - (
                 align_subsampling_weight * align_positive_score).sum() / align_subsampling_weight.sum()
