@@ -40,6 +40,8 @@ class AlignDataset(Dataset):
     def __init__(self, seeds, nentity, negative_sample_size, mode):
         self.seeds = seeds
         self.len = len(seeds)
+        self.mapper = {}
+        self.mapper_function = lambda x: self.mapper[x]
         self.nentity = nentity
         self.negative_sample_size = negative_sample_size
         self.mode = mode
@@ -63,7 +65,8 @@ class AlignDataset(Dataset):
         while negative_sample_size < self.negative_sample_size:
 
             if self.mode == 'align-head-batch':
-                negative_sample = np.random.randint(self.nentity, size=self.negative_sample_size * 2)
+                negative_sample = np.random.randint(self.len, size=self.negative_sample_size * 2)
+                negative_sample = np.array(list(map(self.mapper_function, negative_sample)))
                 mask = np.in1d(
                     negative_sample,
                     self.true_head[tail],
@@ -71,7 +74,8 @@ class AlignDataset(Dataset):
                     invert=True
                 )
             elif self.mode == 'align-tail-batch':
-                negative_sample = np.random.randint(self.nentity, size=self.negative_sample_size * 2)
+                negative_sample = np.random.randint(self.len, size=self.negative_sample_size * 2)
+                negative_sample = np.array(list(map(self.mapper_function, negative_sample)))
                 mask = np.in1d(
                     negative_sample,
                     self.true_tail[head],
@@ -100,14 +104,15 @@ class AlignDataset(Dataset):
         mode = data[0][3]
         return positive_sample, negative_sample, subsample_weight, mode
 
-    @staticmethod
-    def count_frequency(seeds, start=4):
+    def count_frequency(self, seeds, start=4):
         """
         Get frequency of a partial triple like (head, relation) or (relation, tail)
         The frequency will be used for subsampling like word2vec
         """
         count = {}
         for a, b in seeds:
+            self.mapper[a] = b
+            self.mapper[b] = a
             if a not in count:
                 count[a] = start
             else:
@@ -1361,14 +1366,15 @@ class MTransE:
             # entity_a, entity_b = next(self.align_iterator)
             # entity_a, entity_b = 1, 2
             loss, TransE_loss, align_loss = self.train_step(positive_sample, negative_sample, subsampling_weight, mode,
-                                   align_positive_sample, align_negative_sample, align_subsampling_weight, align_mode)
+                                                            align_positive_sample, align_negative_sample,
+                                                            align_subsampling_weight, align_mode)
             # 软对齐
             # 根据模型认为的对齐实体，修改 positive_sample，negative_sample，再训练一轮
             if self.using_soft_align and self.model_is_able_to_predict_align_entities:
                 soft_positive_sample = self.soft_align(positive_sample, mode)
                 loss2, _, _ = self.train_step(soft_positive_sample, negative_sample, subsampling_weight, mode,
-                                        align_positive_sample, align_negative_sample, align_subsampling_weight,
-                                        align_mode)
+                                              align_positive_sample, align_negative_sample, align_subsampling_weight,
+                                              align_mode)
                 loss = loss + loss2
 
             progbar.update(step - init_step + 1, [
