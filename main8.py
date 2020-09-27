@@ -40,8 +40,8 @@ class AlignDataset(Dataset):
     def __init__(self, seeds, nentity, negative_sample_size, mode):
         self.seeds = seeds
         self.len = len(seeds)
-        self.mapper = {}
-        self.mapper_function = lambda x: self.mapper[x]
+        self.left = []
+        self.right = []
         self.nentity = nentity
         self.negative_sample_size = negative_sample_size
         self.mode = mode
@@ -66,7 +66,7 @@ class AlignDataset(Dataset):
 
             if self.mode == 'align-head-batch':
                 negative_sample = np.random.randint(self.len, size=self.negative_sample_size * 2)
-                negative_sample = np.array(list(map(self.mapper_function, negative_sample)))
+                negative_sample = np.array(list(map(lambda x: self.left[x], negative_sample)))
                 mask = np.in1d(
                     negative_sample,
                     self.true_head[tail],
@@ -75,7 +75,7 @@ class AlignDataset(Dataset):
                 )
             elif self.mode == 'align-tail-batch':
                 negative_sample = np.random.randint(self.len, size=self.negative_sample_size * 2)
-                negative_sample = np.array(list(map(self.mapper_function, negative_sample)))
+                negative_sample = np.array(list(map(lambda x: self.right[x], negative_sample)))
                 mask = np.in1d(
                     negative_sample,
                     self.true_tail[head],
@@ -111,8 +111,8 @@ class AlignDataset(Dataset):
         """
         count = {}
         for a, b in seeds:
-            self.mapper[a] = b
-            self.mapper[b] = a
+            self.left.append(a)
+            self.right.append(b)
             if a not in count:
                 count[a] = start
             else:
