@@ -1389,20 +1389,21 @@ class MTransE:
             if step > init_step and step % test_steps == 0:
                 logger.info("\n计算距离中")
                 computing_time = time.time()
-                left_vec = self.t.get_vec3(self.model.entity_embedding, self.model.M, self.t.left_ids)
-                left_vec2 = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
+                left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
+                # left_vec2 = self.t.get_vec3(self.model.entity_embedding, self.model.M, self.t.left_ids)
                 right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
                 sim = spatial.distance.cdist(left_vec, right_vec, metric='euclidean')
-                sim2 = spatial.distance.cdist(left_vec2, right_vec, metric='euclidean')
+                # sim2 = spatial.distance.cdist(left_vec2, right_vec, metric='euclidean')
                 logger.info("计算距离完成，用时 " + str(int(time.time() - computing_time)) + " 秒")
                 if self.using_soft_align:
                     self.do_combine("step-" + str(step), sim)
                 logger.info("属性消融实验")
                 hits = self.t.get_hits(left_vec, right_vec, sim)
-                score2 = self.t.get_score(hits)
-                hits2 = self.t.get_hits(left_vec2, right_vec, sim2)
-                score = self.t.get_score(hits2)
-                logger.info("score = " + str(score) + ", score = " + str(score2))
+                score = self.t.get_score(hits)
+                # hits2 = self.t.get_hits(left_vec2, right_vec, sim2)
+                # score2 = self.t.get_score(hits2)
+                # logger.info("score = " + str(score) + ", score = " + str(score2))
+                logger.info("score = " + str(score))
 
                 if self.visualize:
                     hits_left = hits["left"]
