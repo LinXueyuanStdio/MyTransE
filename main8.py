@@ -410,7 +410,6 @@ class KGEModel(nn.Module):
         return score
 
     def loss_GCN_Align(self, head, tail, mode):
-        print(head.size(), tail.size(), mode)
         score = head - tail
         score = torch.norm(score, p=1, dim=2)
         return score
