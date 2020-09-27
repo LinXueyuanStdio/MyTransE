@@ -411,7 +411,9 @@ class KGEModel(nn.Module):
 
     def loss_GCN_Align(self, head, tail, mode):
         print(head.size(), tail.size(), mode)
-        return head - tail
+        score = head - tail
+        score = torch.norm(score, p=1, dim=2)
+        return score
 
     def loss_MTransE(self, head, tail, mode):
         score = (1 - F.cosine_similarity(head, tail).abs()).sum()
