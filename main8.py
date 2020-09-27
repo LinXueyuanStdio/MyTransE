@@ -1381,7 +1381,7 @@ class MTransE:
                 ("loss", loss),
                 ("align", align_loss),
                 ("TransE", TransE_loss),
-                ("cost", round((time.time() - start_time)))
+                # ("cost", round((time.time() - start_time)))
             ])
             if self.visualize:
                 self.summary_writer.add_scalar(tag='Loss/loss', scalar_value=loss, global_step=step)
