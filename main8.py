@@ -190,7 +190,7 @@ class KGEModel(nn.Module):
 
         if mode == "align":
             # score = (1 - F.cosine_similarity(a, b).abs()).sum()
-            score = self.gamma.item() - torch.norm(a - b, p=1, dim=1)
+            score = (a - b).abs().sum()
             # output = self.layer1(a.matmul(self.M))
             # output = self.layer2(output)
             # output = self.layer3(output)
