@@ -440,29 +440,29 @@ class KGEModel(nn.Module):
         # region av
         if mode == "av-single":
             batch_size, negative_sample_size = sample.size(0), 1
-            print(mode, sample[0].size(), sample[1].size())
+            # print(mode, sample[0].size(), sample[1].size())
             a = torch.index_select(
                 self.relation_embedding,
                 dim=0,
-                index=sample[:, 0, 0].view(batch_size, -1)
+                index=sample[:, 0, 0].view(-1)
             ).unsqueeze(1)
 
             v = torch.index_select(
                 self.value_embedding,
                 dim=0,
-                index=sample[:, 0, 1].view(batch_size, -1)
+                index=sample[:, 0, 1].view(-1)
             ).unsqueeze(1)
 
             a_ = torch.index_select(
                 self.relation_embedding,
                 dim=0,
-                index=sample[:, 1, 0].view(batch_size, -1)
+                index=sample[:, 1, 0].view(-1)
             ).unsqueeze(1)
 
             v_ = torch.index_select(
                 self.value_embedding,
                 dim=0,
-                index=sample[:, 1, 1].view(batch_size, -1)
+                index=sample[:, 1, 1].view(-1)
             ).unsqueeze(1)
             return self.loss_av(a, v, a_, v_, mode)
         elif mode == 'av-head-batch':  # 负例是头
@@ -470,7 +470,7 @@ class KGEModel(nn.Module):
             batch_size, negative_sample_size = head_part.size(0), head_part.size(1)
             # tail_part : batch_size x 2 x 2 第一个2是实体对的2，第二个2是实体对应的(a,v)的2
             # head_part : batch_size x sample_size x 2
-            print(mode, tail_part.size(), head_part.size())
+            # print(mode, tail_part.size(), head_part.size())
 
             a = torch.index_select(
                 self.relation_embedding,
@@ -487,19 +487,19 @@ class KGEModel(nn.Module):
             a_ = torch.index_select(
                 self.relation_embedding,
                 dim=0,
-                index=tail_part[:, 1, 0].view(batch_size, -1)
+                index=tail_part[:, 1, 0].view(-1)
             ).unsqueeze(1)
 
             v_ = torch.index_select(
                 self.value_embedding,
                 dim=0,
-                index=tail_part[:, 1, 1].view(batch_size, -1)
+                index=tail_part[:, 1, 1].view(-1)
             ).unsqueeze(1)
             return self.loss_av(a, v, a_, v_, mode)
         elif mode == 'av-tail-batch':  # 负例是尾
             head_part, tail_part = sample
             batch_size, negative_sample_size = tail_part.size(0), tail_part.size(1)
-            print(mode, tail_part.size(), head_part.size(), head_part[:, 1, 0].view(batch_size, -1))
+            # print(mode, tail_part.size(), head_part.size(), head_part[:, 1, 0].view(batch_size, -1))
             # head_part : batch_size x 2 x 2
             # tail_part : batch_size x sample_size x 2
             a = torch.index_select(
@@ -517,13 +517,13 @@ class KGEModel(nn.Module):
             a_ = torch.index_select(
                 self.relation_embedding,
                 dim=0,
-                index=head_part[:, 1, 0].view(batch_size, -1)
+                index=head_part[:, 1, 0].view(-1)
             ).unsqueeze(1)
 
             v_ = torch.index_select(
                 self.value_embedding,
                 dim=0,
-                index=head_part[:, 1, 1].view(batch_size, -1)
+                index=head_part[:, 1, 1].view(-1)
             ).unsqueeze(1)
             return self.loss_av(a, v, a_, v_, mode)
         # endregion
