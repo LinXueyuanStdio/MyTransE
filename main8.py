@@ -73,7 +73,7 @@ class AVDistanceDataset(Dataset):
             result = self.triple_mapper[e]
             return random.choice(result)
         else:
-            raise Exception
+            return 1, 1
 
     def __len__(self):
         return self.len
