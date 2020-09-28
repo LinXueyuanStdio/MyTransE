@@ -1373,6 +1373,8 @@ class MTransE:
         if need_to_load_checkpoint:
             _, init_step, score = load_checkpoint(self.model, self.optim, self.checkpoint_path)
             last_score = score
+            logger.info("恢复模型后，查看一下模型状态")
+            self.run_test(False)
 
         progbar = Progbar(max_step=total_steps - init_step)
         start_time = time.time()
@@ -1382,8 +1384,6 @@ class MTransE:
                 self.align_iterator)
             av_positive_sample, av_negative_sample, av_subsampling_weight, av_mode = next(
                 self.av_iterator)
-            # entity_a, entity_b = next(self.align_iterator)
-            # entity_a, entity_b = 1, 2
             loss, TransE_loss, align_loss, av_loss = self.train_step(positive_sample, negative_sample,
                                                                      subsampling_weight, mode,
                                                                      align_positive_sample, align_negative_sample,
@@ -1413,23 +1413,7 @@ class MTransE:
                 self.summary_writer.add_scalar(tag='Loss/loss', scalar_value=loss, global_step=step)
 
             if step > init_step and step % test_steps == 0:
-                logger.info("\n计算距离中")
-                computing_time = time.time()
-                left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
-                # left_vec2 = self.t.get_vec3(self.model.entity_embedding, self.model.M, self.t.left_ids)
-                right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
-                sim = spatial.distance.cdist(left_vec, right_vec, metric='euclidean')
-                # sim2 = spatial.distance.cdist(left_vec2, right_vec, metric='euclidean')
-                logger.info("计算距离完成，用时 " + str(int(time.time() - computing_time)) + " 秒")
-                if self.using_soft_align:
-                    self.do_combine("step-" + str(step), sim)
-                logger.info("属性消融实验")
-                hits = self.t.get_hits(left_vec, right_vec, sim)
-                score = self.t.get_score(hits)
-                # hits2 = self.t.get_hits(left_vec2, right_vec, sim2)
-                # score2 = self.t.get_score(hits2)
-                # logger.info("score = " + str(score) + ", score = " + str(score2))
-                logger.info("score = " + str(score))
+                hits = self.run_test(self.using_soft_align)
 
                 if self.visualize:
                     hits_left = hits["left"]
@@ -1456,23 +1440,24 @@ class MTransE:
                                     self.checkpoint_path)
                     save_entity_embedding_list(self.model.entity_embedding, self.embedding_path)
 
-    def run_test(self):
-        load_checkpoint(self.model, self.optim, self.checkpoint_path)
-        logger.info("\n属性消融实验")
+    def run_test(self, soft_align_enable=False):
+        computing_time = time.time()
         left_vec = self.t.get_vec2(self.model.entity_embedding, self.t.left_ids)
+        # left_vec2 = self.t.get_vec3(self.model.entity_embedding, self.model.M, self.t.left_ids)
         right_vec = self.t.get_vec2(self.model.entity_embedding, self.t.right_ids)
         sim = spatial.distance.cdist(left_vec, right_vec, metric='euclidean')
+        # sim2 = spatial.distance.cdist(left_vec2, right_vec, metric='euclidean')
+        logger.info("计算距离完成，用时 " + str(int(time.time() - computing_time)) + " 秒")
+        if soft_align_enable:
+            self.do_combine("combine", sim)
+        logger.info("属性消融实验")
         hits = self.t.get_hits(left_vec, right_vec, sim)
         score = self.t.get_score(hits)
+        # hits2 = self.t.get_hits(left_vec2, right_vec, sim2)
+        # score2 = self.t.get_score(hits2)
+        # logger.info("score = " + str(score) + ", score = " + str(score2))
         logger.info("score = " + str(score))
-
-
-def test_model():
-    m = MTransE()
-    m.init_data()
-    m.init_model()
-    m.init_optimizer()
-    m.run_test()
+        return hits
 
 
 @click.command()
