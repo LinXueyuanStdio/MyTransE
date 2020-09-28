@@ -1168,7 +1168,7 @@ class MTransE:
                          'head-batch'),
             batch_size=1024,
             shuffle=False,
-            num_workers=4,
+            num_workers=8,
             collate_fn=TrainDataset.collate_fn
         )
         train_dataloader_tail = DataLoader(
@@ -1177,7 +1177,7 @@ class MTransE:
                          'tail-batch'),
             batch_size=1024,
             shuffle=False,
-            num_workers=4,
+            num_workers=8,
             collate_fn=TrainDataset.collate_fn
         )
         self.train_iterator = BidirectionalOneShotIterator(train_dataloader_head, train_dataloader_tail)
@@ -1190,7 +1190,7 @@ class MTransE:
                          "align-head-batch"),
             batch_size=500,
             shuffle=True,
-            num_workers=4,
+            num_workers=8,
             collate_fn=AlignDataset.collate_fn
         )
         align_dataloader_tail = DataLoader(
@@ -1199,7 +1199,7 @@ class MTransE:
                          "align-tail-batch"),
             batch_size=500,
             shuffle=True,
-            num_workers=4,
+            num_workers=8,
             collate_fn=AlignDataset.collate_fn
         )
         self.align_iterator = BidirectionalOneShotIterator(align_dataloader_head, align_dataloader_tail)
@@ -1210,7 +1210,7 @@ class MTransE:
                               "av-head-batch"),
             batch_size=500,
             shuffle=True,
-            num_workers=4,
+            num_workers=8,
             collate_fn=AVDistanceDataset.collate_fn
         )
         av_dataloader_tail = DataLoader(
@@ -1219,7 +1219,7 @@ class MTransE:
                               "av-tail-batch"),
             batch_size=500,
             shuffle=True,
-            num_workers=4,
+            num_workers=8,
             collate_fn=AVDistanceDataset.collate_fn
         )
         self.av_iterator = BidirectionalOneShotIterator(av_dataloader_head, av_dataloader_tail)
