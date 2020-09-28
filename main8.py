@@ -1413,7 +1413,7 @@ class MTransE:
                 self.summary_writer.add_scalar(tag='Loss/loss', scalar_value=loss, global_step=step)
 
             if step > init_step and step % test_steps == 0:
-                hits = self.run_test(self.using_soft_align)
+                hits, score = self.run_test(self.using_soft_align)
 
                 if self.visualize:
                     hits_left = hits["left"]
@@ -1457,7 +1457,7 @@ class MTransE:
         # score2 = self.t.get_score(hits2)
         # logger.info("score = " + str(score) + ", score = " + str(score2))
         logger.info("score = " + str(score))
-        return hits
+        return hits, score
 
 
 @click.command()
