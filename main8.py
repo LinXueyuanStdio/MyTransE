@@ -192,7 +192,7 @@ class AlignDataset(Dataset):
         self.len = len(seeds)
         self.kg1_entity_list = kg1_entity_list
         self.kg2_entity_list = kg2_entity_list
-        self.kg1_entity_size = len(kg2_entity_list)
+        self.kg1_entity_size = len(kg1_entity_list)
         self.kg2_entity_size = len(kg2_entity_list)
         self.nentity = nentity
         self.negative_sample_size = negative_sample_size
