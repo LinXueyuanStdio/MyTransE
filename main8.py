@@ -45,7 +45,7 @@ class AVDistanceDataset(Dataset):
         self.len: int = len(seeds)
 
         self.kg1_entity_list: List[int] = kg1_entity_list
-        self.kg1_entity_size: int = len(kg2_entity_list)
+        self.kg1_entity_size: int = len(kg1_entity_list)
 
         self.kg2_entity_list: List[int] = kg2_entity_list
         self.kg2_entity_size: int = len(kg2_entity_list)
