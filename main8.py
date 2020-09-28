@@ -8,7 +8,7 @@ import os
 import time
 import random
 from math import exp
-from typing import List, Tuple, Set
+from typing import List, Tuple, Set, Dict
 
 from scipy import spatial
 import numpy as np
@@ -36,17 +36,44 @@ if torch.cuda.is_available():
 
 # region dataset
 
-class AlignDataset(Dataset):
-    def __init__(self, seeds, nentity, negative_sample_size, mode):
-        self.seeds = seeds
-        self.len = len(seeds)
-        self.left = []
-        self.right = []
+class AVDistanceDataset(Dataset):
+    def __init__(self,
+                 seeds: List[Tuple[int, int]], triples: List[Tuple[int, int, int]],
+                 kg1_entity_list: List[int], kg2_entity_list: List[int],
+                 nentity, negative_sample_size, mode):
+        self.seeds: List[Tuple[int, int]] = seeds
+        self.len: int = len(seeds)
+
+        self.kg1_entity_list: List[int] = kg1_entity_list
+        self.kg1_entity_size: int = len(kg2_entity_list)
+
+        self.kg2_entity_list: List[int] = kg2_entity_list
+        self.kg2_entity_size: int = len(kg2_entity_list)
+
+        self.triple_mapper: Dict[int, List[Tuple[int, int]]] = self.build_triple_mapper(triples)
+
         self.nentity = nentity
         self.negative_sample_size = negative_sample_size
         self.mode = mode
         self.count = self.count_frequency(seeds)
         self.true_head, self.true_tail = self.get_true_head_and_tail(seeds)
+
+    @staticmethod
+    def build_triple_mapper(triples) -> Dict[int, List[Tuple[int, int]]]:
+        triple_mapper: Dict[int, List[Tuple[int, int]]] = {}
+        for e, a, v in triples:
+            if e in triple_mapper:
+                triple_mapper[e].append((a, v))
+            else:
+                triple_mapper[e] = [(a, v)]
+        return triple_mapper
+
+    def random_get_av(self, e) -> Tuple[int, int]:
+        if e in self.triple_mapper:
+            result = self.triple_mapper[e]
+            return random.choice(result)
+        else:
+            raise Exception
 
     def __len__(self):
         return self.len
@@ -64,18 +91,20 @@ class AlignDataset(Dataset):
 
         while negative_sample_size < self.negative_sample_size:
 
-            if self.mode == 'align-head-batch':
-                negative_sample = np.random.randint(self.len, size=self.negative_sample_size * 2)
-                negative_sample = np.array(list(map(lambda x: self.left[x], negative_sample)))
+            if self.mode == 'av-head-batch':
+                # 1. 随机生成 index
+                negative_sample_index = np.random.randint(self.kg1_entity_size, size=self.negative_sample_size * 2)
+                # 2. 将 index 映射为 entity
+                negative_sample = np.array(list(map(lambda x: self.kg1_entity_list[x], negative_sample_index)))
                 mask = np.in1d(
                     negative_sample,
                     self.true_head[tail],
                     assume_unique=True,
                     invert=True
                 )
-            elif self.mode == 'align-tail-batch':
-                negative_sample = np.random.randint(self.len, size=self.negative_sample_size * 2)
-                negative_sample = np.array(list(map(lambda x: self.right[x], negative_sample)))
+            elif self.mode == 'av-tail-batch':
+                negative_sample_index = np.random.randint(self.kg2_entity_size, size=self.negative_sample_size * 2)
+                negative_sample = np.array(list(map(lambda x: self.kg2_entity_list[x], negative_sample_index)))
                 mask = np.in1d(
                     negative_sample,
                     self.true_tail[head],
@@ -85,13 +114,18 @@ class AlignDataset(Dataset):
             else:
                 raise ValueError('Training batch mode %s not supported' % self.mode)
             negative_sample = negative_sample[mask]
+            # 3. 根据 entity 随机搜索其 (attr, value)
+            # sample_size x 2
+            negative_sample = np.array(list(map(lambda x: self.random_get_av(x), negative_sample)))
             negative_sample_list.append(negative_sample)
             negative_sample_size += negative_sample.size
 
+        # sample_size x 2
         negative_sample = np.concatenate(negative_sample_list)[:self.negative_sample_size]
 
-        negative_sample = torch.LongTensor(negative_sample)
+        positive_sample = list(map(lambda x: self.random_get_av(x), positive_sample))
 
+        negative_sample = torch.LongTensor(negative_sample)
         positive_sample = torch.LongTensor(positive_sample)
 
         return positive_sample, negative_sample, subsampling_weight, self.mode
@@ -104,15 +138,14 @@ class AlignDataset(Dataset):
         mode = data[0][3]
         return positive_sample, negative_sample, subsample_weight, mode
 
-    def count_frequency(self, seeds, start=4):
+    @staticmethod
+    def count_frequency(seeds, start=4):
         """
         Get frequency of a partial triple like (head, relation) or (relation, tail)
         The frequency will be used for subsampling like word2vec
         """
         count = {}
         for a, b in seeds:
-            self.left.append(a)
-            self.right.append(b)
             if a not in count:
                 count[a] = start
             else:
@@ -150,28 +183,121 @@ class AlignDataset(Dataset):
         return true_head, true_tail
 
 
-class AlignIterator(object):
-    def __init__(self, dataloader_head, dataloader_tail):
-        self.iterator_head = self.one_shot_iterator(dataloader_head)
-        self.iterator_tail = self.one_shot_iterator(dataloader_tail)
-        self.step = 0
+class AlignDataset(Dataset):
+    def __init__(self,
+                 seeds: List[Tuple[int, int]],
+                 kg1_entity_list: List[int], kg2_entity_list: List[int],
+                 nentity, negative_sample_size, mode):
+        self.seeds = seeds
+        self.len = len(seeds)
+        self.kg1_entity_list = kg1_entity_list
+        self.kg2_entity_list = kg2_entity_list
+        self.kg1_entity_size = len(kg2_entity_list)
+        self.kg2_entity_size = len(kg2_entity_list)
+        self.nentity = nentity
+        self.negative_sample_size = negative_sample_size
+        self.mode = mode
+        self.count = self.count_frequency(seeds)
+        self.true_head, self.true_tail = self.get_true_head_and_tail(seeds)
 
-    def __next__(self):
-        self.step += 1
-        if self.step % 2 == 0:
-            data = next(self.iterator_head)
-        else:
-            data = next(self.iterator_tail)
-        return data
+    def __len__(self):
+        return self.len
+
+    def __getitem__(self, idx):
+        positive_sample = self.seeds[idx]
+
+        head, tail = positive_sample
+
+        subsampling_weight = self.count[head] + self.count[tail]
+        subsampling_weight = torch.sqrt(1 / torch.Tensor([subsampling_weight]))
+
+        negative_sample_list = []
+        negative_sample_size = 0
+
+        while negative_sample_size < self.negative_sample_size:
+
+            if self.mode == 'align-head-batch':
+                negative_sample = np.random.randint(self.kg1_entity_size, size=self.negative_sample_size * 2)
+                negative_sample = np.array(list(map(lambda x: self.kg1_entity_list[x], negative_sample)))
+                mask = np.in1d(
+                    negative_sample,
+                    self.true_head[tail],
+                    assume_unique=True,
+                    invert=True
+                )
+            elif self.mode == 'align-tail-batch':
+                negative_sample = np.random.randint(self.kg2_entity_size, size=self.negative_sample_size * 2)
+                negative_sample = np.array(list(map(lambda x: self.kg2_entity_list[x], negative_sample)))
+                mask = np.in1d(
+                    negative_sample,
+                    self.true_tail[head],
+                    assume_unique=True,
+                    invert=True
+                )
+            else:
+                raise ValueError('Training batch mode %s not supported' % self.mode)
+            negative_sample = negative_sample[mask]
+            negative_sample_list.append(negative_sample)
+            negative_sample_size += negative_sample.size
+
+        negative_sample = np.concatenate(negative_sample_list)[:self.negative_sample_size]
+
+        negative_sample = torch.LongTensor(negative_sample)
+
+        positive_sample = torch.LongTensor(positive_sample)
+
+        return positive_sample, negative_sample, subsampling_weight, self.mode
 
     @staticmethod
-    def one_shot_iterator(dataloader):
+    def collate_fn(data):
+        positive_sample = torch.stack([_[0] for _ in data], dim=0)
+        negative_sample = torch.stack([_[1] for _ in data], dim=0)
+        subsample_weight = torch.cat([_[2] for _ in data], dim=0)
+        mode = data[0][3]
+        return positive_sample, negative_sample, subsample_weight, mode
+
+    def count_frequency(self, seeds: List[Tuple[int, int]], start=4):
         """
-        Transform a PyTorch Dataloader into python iterator
+        Get frequency of a partial triple like (head, relation) or (relation, tail)
+        The frequency will be used for subsampling like word2vec
         """
-        while True:
-            for data in dataloader:
-                yield data
+        count = {}
+        for a, b in seeds:
+            if a not in count:
+                count[a] = start
+            else:
+                count[a] += 1
+
+            if b not in count:
+                count[b] = start
+            else:
+                count[b] += 1
+        return count
+
+    @staticmethod
+    def get_true_head_and_tail(seeds):
+        """
+        Build a dictionary of true triples that will
+        be used to filter these true triples for negative sampling
+        """
+
+        true_head = {}
+        true_tail = {}
+
+        for a, b in seeds:
+            if a not in true_tail:
+                true_tail[a] = []
+            true_tail[a].append(b)
+            if b not in true_head:
+                true_head[b] = []
+            true_head[b].append(a)
+
+        for b in true_head:
+            true_head[b] = np.array(list(set(true_head[b])))
+        for a in true_tail:
+            true_tail[a] = np.array(list(set(true_tail[a])))
+
+        return true_head, true_tail
 
 
 # endregion
@@ -245,7 +371,7 @@ class KGEModel(nn.Module):
         self.layer3 = nn.Linear(2 * self.entity_dim, self.entity_dim)
 
     def forward(self, sample, mode='single'):
-
+        # region align
         if mode == "align-single":
             batch_size, negative_sample_size = sample.size(0), 1
             head = torch.index_select(
@@ -310,7 +436,98 @@ class KGEModel(nn.Module):
         # loss_orth = ((self.M * (self.ones - self.diag)) ** 2).sum()
         # return score + loss_orth
         # 6. GCN-Align 的对齐模块 align_loss
+        # endregion
+        # region av
+        if mode == "av-single":
+            batch_size, negative_sample_size = sample.size(0), 1
+            a = torch.index_select(
+                self.relation_embedding,
+                dim=0,
+                index=sample[:, 0, 0].view(batch_size, -1)
+            ).unsqueeze(1)
 
+            v = torch.index_select(
+                self.value_embedding,
+                dim=0,
+                index=sample[:, 0, 1].view(batch_size, -1)
+            ).unsqueeze(1)
+
+            a_ = torch.index_select(
+                self.relation_embedding,
+                dim=0,
+                index=sample[:, 1, 0].view(batch_size, -1)
+            ).unsqueeze(1)
+
+            v_ = torch.index_select(
+                self.value_embedding,
+                dim=0,
+                index=sample[:, 1, 1].view(batch_size, -1)
+            ).unsqueeze(1)
+            return self.loss_av(a, v, a_, v_, mode)
+        elif mode == 'av-head-batch':  # 负例是头
+            tail_part, head_part = sample
+            batch_size, negative_sample_size = head_part.size(0), head_part.size(1)
+            # tail_part : batch_size x 2 x 2 第一个2是实体对的2，第二个2是实体对应的(a,v)的2
+            # head_part : batch_size x sample_size x 2
+            print(mode, tail_part.size(), head_part.size())
+
+            a = torch.index_select(
+                self.relation_embedding,
+                dim=0,
+                index=head_part[:, :, 0].view(-1)
+            ).view(batch_size, negative_sample_size, -1)
+
+            v = torch.index_select(
+                self.value_embedding,
+                dim=0,
+                index=head_part[:, :, 1].view(-1)
+            ).view(batch_size, negative_sample_size, -1)
+
+            a_ = torch.index_select(
+                self.relation_embedding,
+                dim=0,
+                index=tail_part[:, 1, 0].view(batch_size, -1)
+            ).unsqueeze(1)
+
+            v_ = torch.index_select(
+                self.value_embedding,
+                dim=0,
+                index=tail_part[:, 1, 1].view(batch_size, -1)
+            ).unsqueeze(1)
+            return self.loss_av(a, v, a_, v_, mode)
+        elif mode == 'av-tail-batch':  # 负例是尾
+            head_part, tail_part = sample
+            batch_size, negative_sample_size = tail_part.size(0), tail_part.size(1)
+            print(mode, tail_part.size(), head_part.size())
+            # head_part : batch_size x 2 x 2
+            # tail_part : batch_size x sample_size x 2
+            a = torch.index_select(
+                self.relation_embedding,
+                dim=0,
+                index=tail_part[:, :, 0].view(-1)
+            ).view(batch_size, negative_sample_size, -1)
+
+            v = torch.index_select(
+                self.value_embedding,
+                dim=0,
+                index=tail_part[:, :, 1].view(-1)
+            ).view(batch_size, negative_sample_size, -1)
+
+            a_ = torch.index_select(
+                self.relation_embedding,
+                dim=0,
+                index=head_part[:, 1, 0].view(batch_size, -1)
+            ).unsqueeze(1)
+
+            v_ = torch.index_select(
+                self.value_embedding,
+                dim=0,
+                index=head_part[:, 1, 1].view(batch_size, -1)
+            ).unsqueeze(1)
+            return self.loss_av(a, v, a_, v_, mode)
+        # endregion
+
+        # 以下是 TransE
         if mode == 'single':
             batch_size, negative_sample_size = sample.size(0), 1
 
@@ -334,6 +551,8 @@ class KGEModel(nn.Module):
 
         elif mode == 'head-batch':
             tail_part, head_part = sample
+            # head_part : batch_size x sample_size
+            # tail_part : batch_size x 3
             batch_size, negative_sample_size = head_part.size(0), head_part.size(1)
 
             head = torch.index_select(
@@ -357,6 +576,8 @@ class KGEModel(nn.Module):
         elif mode == 'tail-batch':
 
             head_part, tail_part = sample
+            # head_part : batch_size x 3
+            # tail_part : batch_size x sample_size
             batch_size, negative_sample_size = tail_part.size(0), tail_part.size(1)
             head = torch.index_select(
                 self.entity_embedding,
@@ -376,22 +597,6 @@ class KGEModel(nn.Module):
                 index=tail_part.view(-1)
             ).view(batch_size, negative_sample_size, -1)
 
-        elif mode == "align":
-            entity_a, entity_b = sample
-
-            a = torch.index_select(
-                self.entity_embedding,
-                dim=0,
-                index=entity_a
-            )
-
-            b = torch.index_select(
-                self.entity_embedding,
-                dim=0,
-                index=entity_b
-            )
-            # a = F.normalize(a, p=1, dim=1)
-            # b = F.normalize(b, p=1, dim=1)
         else:
             raise ValueError('mode %s not supported' % mode)
 
@@ -410,22 +615,16 @@ class KGEModel(nn.Module):
         score = self.TransE(head, relation, tail, mode)
         return score
 
-    def loss_TransE(self, head, tail, mode):
-        score = (1 - F.cosine_similarity(head, tail).abs()).sum()
+    def loss_av(self, a, v, a_, v_, mode):
+        score = (a - v) - (a_ - v_)
+        score = self.gamma.item() - torch.norm(score, p=1, dim=2)
+        # score = torch.norm(score, p=1, dim=2)
         return score
 
     def loss_GCN_Align(self, head, tail, mode):
         score = head - tail
         score = self.gamma.item() - torch.norm(score, p=1, dim=2)
         # score = torch.norm(score, p=1, dim=2)
-        return score
-
-    def loss_MTransE(self, head, tail, mode):
-        score = (1 - F.cosine_similarity(head, tail).abs()).sum()
-        return score
-
-    def loss_DNN(self, head, tail, mode):
-        score = (1 - F.cosine_similarity(head, tail).abs()).sum()
         return score
 
     def loss_cos(self, head, tail, mode):
@@ -471,10 +670,25 @@ class KGEModel(nn.Module):
         score = self.gamma.item() - score.sum(dim=2)
         return score
 
+    def loss(self, model,
+             positive_sample, negative_sample, subsampling_weight, mode,
+             single_mode="single"):
+        negative_score = model((positive_sample, negative_sample), mode=mode)
+        negative_score = F.logsigmoid(-negative_score).mean(dim=1)
+
+        positive_score = model(positive_sample, mode=single_mode)
+        positive_score = F.logsigmoid(positive_score).squeeze(dim=1)
+
+        positive_sample_loss = - (subsampling_weight * positive_score).sum() / subsampling_weight.sum()
+        negative_sample_loss = - (subsampling_weight * negative_score).sum() / subsampling_weight.sum()
+        loss = (positive_sample_loss + negative_sample_loss) / 2
+        return loss
+
     @staticmethod
     def train_step(model, optimizer,
                    positive_sample, negative_sample, subsampling_weight, mode,
                    align_positive_sample, align_negative_sample, align_subsampling_weight, align_mode,
+                   av_positive_sample, av_negative_sample, av_subsampling_weight, av_mode,
                    device="cuda"):
 
         model.train()
@@ -483,267 +697,30 @@ class KGEModel(nn.Module):
         positive_sample = positive_sample.to(device)
         negative_sample = negative_sample.to(device)
         subsampling_weight = subsampling_weight.to(device)
+
         align_positive_sample = align_positive_sample.to(device)
         align_negative_sample = align_negative_sample.to(device)
         align_subsampling_weight = align_subsampling_weight.to(device)
 
-        negative_score = model((positive_sample, negative_sample), mode=mode)
-        negative_score = F.logsigmoid(-negative_score).mean(dim=1)
+        av_positive_sample = av_positive_sample.to(device)
+        av_negative_sample = av_negative_sample.to(device)
+        av_subsampling_weight = av_subsampling_weight.to(device)
 
-        positive_score = model(positive_sample, mode="single")
-        positive_score = F.logsigmoid(positive_score).squeeze(dim=1)
+        raw_loss = model.loss(model,
+                              positive_sample, negative_sample, subsampling_weight,
+                              mode, "single")
+        align_loss = model.loss(model,
+                                align_positive_sample, align_negative_sample, align_subsampling_weight,
+                                align_mode, "align-single")
+        av_loss = model.loss(model,
+                             av_positive_sample, av_negative_sample, av_subsampling_weight,
+                             av_mode, "av-single")
 
-        positive_sample_loss = - (subsampling_weight * positive_score).sum() / subsampling_weight.sum()
-        negative_sample_loss = - (subsampling_weight * negative_score).sum() / subsampling_weight.sum()
-
-        align_negative_score = model((align_positive_sample, align_negative_sample), mode=align_mode)
-        align_negative_score = F.logsigmoid(-align_negative_score).mean(dim=1)
-
-        align_positive_score = model(align_positive_sample, mode="align-single")
-        align_positive_score = F.logsigmoid(align_positive_score).squeeze(dim=1)
-
-        align_positive_sample_loss = - (
-                align_subsampling_weight * align_positive_score).sum() / align_subsampling_weight.sum()
-        align_negative_sample_loss = - (
-                align_subsampling_weight * align_negative_score).sum() / align_subsampling_weight.sum()
-
-        align_loss = (align_positive_sample_loss + align_negative_sample_loss) / 2
-        raw_loss = (positive_sample_loss + negative_sample_loss) / 2
-        loss = (raw_loss + align_loss) / 2
+        loss = (raw_loss + align_loss + av_loss) / 3
         loss.backward()
         optimizer.step()
 
-        return loss.item(), raw_loss.item(), align_loss.item()
-
-
-class AttrTransE(nn.Module):
-    def __init__(self,
-                 entity_count,
-                 attr_count,
-                 value_count,
-                 train_seeds,
-                 hidden_dim=200,
-                 ):
-        super(AttrTransE, self).__init__()
-        self.hidden_dim = hidden_dim
-        self.entity_count = entity_count
-        self.attr_count = attr_count
-        self.value_count = value_count
-        self.nentity = self.entity_count
-        self.nrelation = self.attr_count
-        self.nvalue = self.value_count
-        self.epsilon = 2.0
-
-        self.gamma = nn.Parameter(
-            torch.Tensor([1.0]),
-            requires_grad=False
-        )
-
-        self.embedding_range = nn.Parameter(
-            torch.Tensor([(self.gamma.item() + self.epsilon) / self.hidden_dim]),
-            requires_grad=False
-        )
-        self.entity_dim = self.hidden_dim
-        self.relation_dim = self.hidden_dim
-        self.value_dim = self.hidden_dim
-
-        entity_weight = torch.zeros(self.nentity, self.entity_dim)
-        nn.init.normal_(entity_weight)
-        # nn.init.uniform_(
-        #     tensor=entity_weight,
-        #     a=-self.embedding_range.item(),
-        #     b=self.embedding_range.item()
-        # )
-        for left_entity, right_entity in train_seeds:
-            entity_weight[left_entity] = entity_weight[right_entity]
-        self.entity_embedding = nn.Parameter(entity_weight)
-
-        self.relation_embedding = nn.Parameter(torch.zeros(self.nrelation, self.relation_dim))
-        nn.init.normal_(self.relation_embedding)
-        # nn.init.uniform_(
-        #     tensor=self.relation_embedding,
-        #     a=-self.embedding_range.item(),
-        #     b=self.embedding_range.item()
-        # )
-
-        self.value_embedding = nn.Parameter(torch.zeros(self.nvalue, self.value_dim))
-        nn.init.normal_(self.value_embedding)
-        # nn.init.uniform_(
-        #     tensor=self.value_embedding,
-        #     a=-self.embedding_range.item(),
-        #     b=self.embedding_range.item()
-        # )
-
-        self.M = nn.Parameter(torch.zeros(self.entity_dim, self.entity_dim))
-        nn.init.orthogonal_(self.M)  # 正交矩阵
-
-        self.bias = nn.Parameter(torch.zeros(self.entity_dim))
-        nn.init.normal_(self.bias)
-        self.ones = nn.Parameter(torch.ones(self.entity_dim, self.entity_dim, dtype=torch.float32),
-                                 requires_grad=False)  # 200 * 200
-        self.diag = nn.Parameter(torch.eye(self.entity_dim, dtype=torch.float32,
-                                           requires_grad=False))  # 200 * 200
-
-    def forward(self, sample, mode='single'):
-        positive_negative_pair, entity_pair = sample
-        loss1 = self.get_TransE_loss(positive_negative_pair, mode)
-        # loss2 = self.get_Align_loss(entity_pair)
-        # return loss1 + loss2
-        return loss1
-
-    def get_Align_loss(self, sample):
-        entity_a, entity_b = sample
-        F.normalize(self.entity_embedding, p=2, dim=1)
-        loss_orth = ((self.M * (self.ones - self.diag)) ** 2).sum()
-        a = torch.index_select(
-            self.entity_embedding,
-            dim=0,
-            index=entity_a
-        )
-
-        b = torch.index_select(
-            self.entity_embedding,
-            dim=0,
-            index=entity_b
-        )
-        a = F.normalize(a, p=1, dim=1)
-        b = F.normalize(b, p=1, dim=1)
-        loss = a.matmul(self.M) - b
-        # loss = F.logsigmoid(loss.sum(dim=1).mean())  # L1范数
-        loss = torch.sqrt(torch.square(loss).sum(dim=1)).mean()  # L2范数
-        return loss + loss_orth
-
-    def get_TransE_loss(self, sample, mode='single'):
-        positive_sample, negative_sample, subsampling_weight = sample
-        # F.normalize(self.entity_embedding, p=2, dim=1)
-        # F.normalize(self.relation_embedding, p=2, dim=1)
-        # F.normalize(self.value_embedding, p=2, dim=1)
-        negative_score = self.distance((positive_sample, negative_sample), mode=mode)
-        negative_score = F.logsigmoid(-negative_score).mean(dim=1)
-
-        positive_score = self.distance(positive_sample, mode='single')
-        positive_score = F.logsigmoid(positive_score).squeeze(dim=1)
-
-        positive_sample_loss = - (subsampling_weight * positive_score).sum() / subsampling_weight.sum()
-        negative_sample_loss = - (subsampling_weight * negative_score).sum() / subsampling_weight.sum()
-
-        loss = (positive_sample_loss + negative_sample_loss) / 2
-        return loss
-
-    def distance(self, sample, mode='single'):
-        if mode == 'single':
-            batch_size, negative_sample_size = sample.size(0), 1
-
-            head = torch.index_select(
-                self.entity_embedding,
-                dim=0,
-                index=sample[:, 0]
-            ).unsqueeze(1)
-
-            relation = torch.index_select(
-                self.relation_embedding,
-                dim=0,
-                index=sample[:, 1]
-            ).unsqueeze(1)
-
-            tail = torch.index_select(
-                self.value_embedding,
-                dim=0,
-                index=sample[:, 2]
-            ).unsqueeze(1)
-
-        elif mode == 'head-batch':
-            tail_part, head_part = sample
-            batch_size, negative_sample_size = head_part.size(0), head_part.size(1)
-
-            head = torch.index_select(
-                self.entity_embedding,
-                dim=0,
-                index=head_part.view(-1)
-            ).view(batch_size, negative_sample_size, -1)
-
-            relation = torch.index_select(
-                self.relation_embedding,
-                dim=0,
-                index=tail_part[:, 1]
-            ).unsqueeze(1)
-
-            tail = torch.index_select(
-                self.value_embedding,
-                dim=0,
-                index=tail_part[:, 2]
-            ).unsqueeze(1)
-
-        elif mode == 'tail-batch':
-
-            head_part, tail_part = sample
-            batch_size, negative_sample_size = tail_part.size(0), tail_part.size(1)
-            head = torch.index_select(
-                self.entity_embedding,
-                dim=0,
-                index=head_part[:, 0]
-            ).unsqueeze(1)
-
-            relation = torch.index_select(
-                self.relation_embedding,
-                dim=0,
-                index=head_part[:, 1]
-            ).unsqueeze(1)
-
-            tail = torch.index_select(
-                self.value_embedding,
-                dim=0,
-                index=tail_part.view(-1)
-            ).view(batch_size, negative_sample_size, -1)
-
-        else:
-            raise ValueError('mode %s not supported' % mode)
-
-        score = self.TransE(head, relation, tail, mode)
-
-        return score
-
-    def TransE(self, head, relation, tail, mode):
-        head = F.normalize(head, p=1, dim=2)  # TransE规定了必须用1范数来规范化
-        relation = F.normalize(relation, p=1, dim=2)
-        tail = F.normalize(tail, p=1, dim=2)
-
-        if mode == 'head-batch':
-            score = head + (relation - tail)
-        else:
-            score = (head + relation) - tail
-        score = self.gamma.item() - torch.norm(score, p=1, dim=2)
-        return score
-
-    def RotatE(self, head, relation, tail, mode):
-
-        pi = 3.14159265358979323846
-
-        re_head, im_head = torch.chunk(head, 2, dim=2)
-        re_tail, im_tail = torch.chunk(tail, 2, dim=2)
-
-        # Make phases of relations uniformly distributed in [-pi, pi]
-
-        phase_relation = relation / (self.embedding_range.item() / pi)
-        re_relation = torch.cos(phase_relation)
-        im_relation = torch.sin(phase_relation)
-
-        if mode == 'head-batch':
-            re_score = re_relation * re_tail + im_relation * im_tail
-            im_score = re_relation * im_tail - im_relation * re_tail
-            re_score = re_score - re_head
-            im_score = im_score - im_head
-        else:
-            re_score = re_head * re_relation - im_head * im_relation
-            im_score = re_head * im_relation + im_head * re_relation
-            re_score = re_score - re_tail
-            im_score = im_score - im_tail
-
-        score = torch.stack([re_score, im_score], dim=0)
-        score = score.norm(dim=0)
-
-        score = self.gamma.item() - score.sum(dim=2)
-        return score
+        return loss.item(), raw_loss.item(), align_loss.item(), av_loss.item()
 
 
 # endregion
@@ -1125,6 +1102,8 @@ class MTransE:
                  all_attr_file="data/fr_en/att2id_all",
                  all_value_file="data/fr_en/att_value2id_all",
                  all_triple_file="data/fr_en/att_triple_all",
+                 kg1_entity_file="data/fr_en/ent_ids_1",
+                 kg2_entity_file="data/fr_en/ent_ids_2",
                  # output paths
                  checkpoint_path="./result/TransE/fr_en/checkpoint.tar",
                  embedding_path="./result/TransE/fr_en/ATentsembed.txt",
@@ -1140,6 +1119,8 @@ class MTransE:
         self.all_attr_file = all_attr_file
         self.all_value_file = all_value_file
         self.all_triple_file = all_triple_file
+        self.kg1_entity_file = kg1_entity_file
+        self.kg2_entity_file = kg2_entity_file
         self.tensorboard_log_dir = tensorboard_log_dir
         self.checkpoint_path = checkpoint_path
         self.embedding_path = embedding_path
@@ -1156,6 +1137,8 @@ class MTransE:
         self.entity_list, self.entity_name_list = read_ids_and_names(self.all_entity_file)
         self.attr_list, _ = read_ids_and_names(self.all_attr_file)
         self.value_list, _ = read_ids_and_names(self.all_value_file)
+        self.kg1_entity_list, _ = read_ids_and_names(self.kg1_entity_file)
+        self.kg2_entity_list, _ = read_ids_and_names(self.kg2_entity_file)
         self.all_triple_file_ext = self.all_triple_file + "_ext"
         self.train_triples = read_triple(self.all_triple_file)
 
@@ -1177,14 +1160,18 @@ class MTransE:
     def init_dataset(self):
         logger.info("triple: " + str(len(self.train_triples)))
         train_dataloader_head = DataLoader(
-            TrainDataset(self.train_triples, self.entity_count, self.attr_count, self.value_count, 1024, 'head-batch'),
+            TrainDataset(self.train_triples,
+                         self.entity_count, self.attr_count, self.value_count, 1024,
+                         'head-batch'),
             batch_size=1024,
             shuffle=False,
             num_workers=4,
             collate_fn=TrainDataset.collate_fn
         )
         train_dataloader_tail = DataLoader(
-            TrainDataset(self.train_triples, self.entity_count, self.attr_count, self.value_count, 1024, 'tail-batch'),
+            TrainDataset(self.train_triples,
+                         self.entity_count, self.attr_count, self.value_count, 1024,
+                         'tail-batch'),
             batch_size=1024,
             shuffle=False,
             num_workers=4,
@@ -1195,20 +1182,44 @@ class MTransE:
         logger.info("train-align: " + str(len(self.t.train_seeds)))
         logger.info("test-align: " + str(len(self.t.test_seeds)))
         align_dataloader_head = DataLoader(
-            AlignDataset(self.t.train_seeds, self.entity_count, 500, "align-head-batch"),
+            AlignDataset(self.t.train_seeds, self.kg1_entity_list, self.kg2_entity_list,
+                         self.entity_count, 500,
+                         "align-head-batch"),
             batch_size=500,
             shuffle=True,
             num_workers=4,
             collate_fn=AlignDataset.collate_fn
         )
         align_dataloader_tail = DataLoader(
-            AlignDataset(self.t.train_seeds, self.entity_count, 500, "align-tail-batch"),
+            AlignDataset(self.t.train_seeds, self.kg1_entity_list, self.kg2_entity_list,
+                         self.entity_count, 500,
+                         "align-tail-batch"),
             batch_size=500,
             shuffle=True,
             num_workers=4,
             collate_fn=AlignDataset.collate_fn
         )
-        self.align_iterator = AlignIterator(align_dataloader_head, align_dataloader_tail)
+        self.align_iterator = BidirectionalOneShotIterator(align_dataloader_head, align_dataloader_tail)
+
+        av_dataloader_head = DataLoader(
+            AVDistanceDataset(self.t.train_seeds, self.train_triples, self.kg1_entity_list, self.kg2_entity_list,
+                              self.entity_count, 500,
+                              "av-head-batch"),
+            batch_size=500,
+            shuffle=True,
+            num_workers=4,
+            collate_fn=AVDistanceDataset.collate_fn
+        )
+        av_dataloader_tail = DataLoader(
+            AVDistanceDataset(self.t.train_seeds, self.train_triples, self.kg1_entity_list, self.kg2_entity_list,
+                              self.entity_count, 500,
+                              "av-tail-batch"),
+            batch_size=500,
+            shuffle=True,
+            num_workers=4,
+            collate_fn=AVDistanceDataset.collate_fn
+        )
+        self.av_iterator = BidirectionalOneShotIterator(av_dataloader_head, av_dataloader_tail)
 
     def init_model(self):
         self.model = KGEModel(
@@ -1340,10 +1351,13 @@ class MTransE:
 
     def train_step(self,
                    positive_sample, negative_sample, subsampling_weight, mode,
-                   align_positive_sample, align_negative_sample, align_subsampling_weight, align_mode):
+                   align_positive_sample, align_negative_sample, align_subsampling_weight, align_mode,
+                   av_positive_sample, av_negative_sample, av_subsampling_weight, av_mode
+                   ):
         return self.model.train_step(self.model, self.optim,
                                      positive_sample, negative_sample, subsampling_weight, mode,
-                                     align_positive_sample, align_negative_sample, align_subsampling_weight, align_mode)
+                                     align_positive_sample, align_negative_sample, align_subsampling_weight, align_mode,
+                                     av_positive_sample, av_negative_sample, av_subsampling_weight, av_mode)
 
     def run_train(self, need_to_load_checkpoint=True):
         logger.info("start training")
@@ -1363,24 +1377,33 @@ class MTransE:
             positive_sample, negative_sample, subsampling_weight, mode = next(self.train_iterator)
             align_positive_sample, align_negative_sample, align_subsampling_weight, align_mode = next(
                 self.align_iterator)
+            av_positive_sample, av_negative_sample, av_subsampling_weight, av_mode = next(
+                self.av_iterator)
             # entity_a, entity_b = next(self.align_iterator)
             # entity_a, entity_b = 1, 2
-            loss, TransE_loss, align_loss = self.train_step(positive_sample, negative_sample, subsampling_weight, mode,
-                                                            align_positive_sample, align_negative_sample,
-                                                            align_subsampling_weight, align_mode)
+            loss, TransE_loss, align_loss, av_loss = self.train_step(positive_sample, negative_sample,
+                                                                     subsampling_weight, mode,
+                                                                     align_positive_sample, align_negative_sample,
+                                                                     align_subsampling_weight, align_mode,
+                                                                     av_positive_sample, av_negative_sample,
+                                                                     av_subsampling_weight, av_mode)
             # 软对齐
             # 根据模型认为的对齐实体，修改 positive_sample，negative_sample，再训练一轮
             if self.using_soft_align and self.model_is_able_to_predict_align_entities:
                 soft_positive_sample = self.soft_align(positive_sample, mode)
-                loss2, _, _ = self.train_step(soft_positive_sample, negative_sample, subsampling_weight, mode,
-                                              align_positive_sample, align_negative_sample, align_subsampling_weight,
-                                              align_mode)
+                loss2, _, _, _ = self.train_step(soft_positive_sample, negative_sample,
+                                                 subsampling_weight, mode,
+                                                 align_positive_sample, align_negative_sample,
+                                                 align_subsampling_weight, align_mode,
+                                                 av_positive_sample, av_negative_sample,
+                                                 av_subsampling_weight, av_mode)
                 loss = loss + loss2
 
             progbar.update(step - init_step + 1, [
                 ("loss", loss),
                 ("align", align_loss),
                 ("TransE", TransE_loss),
+                ("av", av_loss),
                 # ("cost", round((time.time() - start_time)))
             ])
             if self.visualize:
