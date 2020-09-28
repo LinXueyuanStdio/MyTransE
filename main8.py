@@ -440,6 +440,7 @@ class KGEModel(nn.Module):
         # region av
         if mode == "av-single":
             batch_size, negative_sample_size = sample.size(0), 1
+            print(mode, sample[0].size(), sample[1].size())
             a = torch.index_select(
                 self.relation_embedding,
                 dim=0,
@@ -498,7 +499,7 @@ class KGEModel(nn.Module):
         elif mode == 'av-tail-batch':  # 负例是尾
             head_part, tail_part = sample
             batch_size, negative_sample_size = tail_part.size(0), tail_part.size(1)
-            print(mode, tail_part.size(), head_part.size())
+            print(mode, tail_part.size(), head_part.size(), head_part[:, 1, 0].view(batch_size, -1))
             # head_part : batch_size x 2 x 2
             # tail_part : batch_size x sample_size x 2
             a = torch.index_select(
