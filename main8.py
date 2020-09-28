@@ -57,7 +57,6 @@ class AVDistanceDataset(Dataset):
         self.mode = mode
         self.count = self.count_frequency(seeds)
         self.true_head, self.true_tail = self.get_true_head_and_tail(seeds)
-        print("align dataset", self.len, self.kg1_entity_size, self.kg2_entity_size)
 
     @staticmethod
     def build_triple_mapper(triples) -> Dict[int, List[Tuple[int, int]]]:
@@ -200,7 +199,6 @@ class AlignDataset(Dataset):
         self.mode = mode
         self.count = self.count_frequency(seeds)
         self.true_head, self.true_tail = self.get_true_head_and_tail(seeds)
-        print("align dataset", self.len, self.kg1_entity_size, self.kg2_entity_size)
 
     def __len__(self):
         return self.len
@@ -220,7 +218,6 @@ class AlignDataset(Dataset):
 
             if self.mode == 'align-head-batch':
                 negative_sample = np.random.randint(self.kg1_entity_size, size=self.negative_sample_size * 2)
-                print(negative_sample)
                 negative_sample = np.array(list(map(lambda x: self.kg1_entity_list[x], negative_sample)))
                 mask = np.in1d(
                     negative_sample,
@@ -230,7 +227,6 @@ class AlignDataset(Dataset):
                 )
             elif self.mode == 'align-tail-batch':
                 negative_sample = np.random.randint(self.kg2_entity_size, size=self.negative_sample_size * 2)
-                print(negative_sample)
                 negative_sample = np.array(list(map(lambda x: self.kg2_entity_list[x], negative_sample)))
                 mask = np.in1d(
                     negative_sample,
@@ -1154,6 +1150,8 @@ class MTransE:
         logger.info("entity: " + str(self.entity_count)
                     + " attr: " + str(self.attr_count)
                     + " value: " + str(self.value_count))
+        logger.info("kg1_entity: " + str(len(self.kg1_entity_list))
+                    + " kg2_entity: " + str(len(self.kg2_entity_list)))
 
     def append_align_triple(self):
         if os.path.exists(self.all_triple_file_ext):
