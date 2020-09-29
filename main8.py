@@ -73,6 +73,7 @@ class AVDistanceDataset(Dataset):
             result = self.triple_mapper[e]
             return random.choice(result)
         else:
+            print("error")
             return 1, 1
 
     def __len__(self):
@@ -1205,7 +1206,7 @@ class MTransE:
         self.align_iterator = BidirectionalOneShotIterator(align_dataloader_head, align_dataloader_tail)
 
         av_dataloader_head = DataLoader(
-            AVDistanceDataset(self.t.train_seeds, self.train_triples, self.kg1_entity_list, self.kg2_entity_list,
+            AVDistanceDataset(self.t.train_seeds, self.train_triples, self.t.left_ids, self.t.right_ids,
                               self.entity_count, 500,
                               "av-head-batch"),
             batch_size=500,
@@ -1214,7 +1215,7 @@ class MTransE:
             collate_fn=AVDistanceDataset.collate_fn
         )
         av_dataloader_tail = DataLoader(
-            AVDistanceDataset(self.t.train_seeds, self.train_triples, self.kg1_entity_list, self.kg2_entity_list,
+            AVDistanceDataset(self.t.train_seeds, self.train_triples, self.t.left_ids, self.t.right_ids,
                               self.entity_count, 500,
                               "av-tail-batch"),
             batch_size=500,
