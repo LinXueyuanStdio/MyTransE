@@ -1440,6 +1440,7 @@ class MTransE:
                                     1, step, score,
                                     self.checkpoint_path)
                     save_entity_embedding_list(self.model.entity_embedding, self.embedding_path)
+                save_entity_embedding_list(self.model.entity_embedding, self.embedding_path + "_score_" + str(score))
 
     def run_test(self, soft_align_enable=False):
         computing_time = time.time()
