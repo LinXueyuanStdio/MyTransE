@@ -1377,7 +1377,7 @@ class MTransE:
             logger.info("恢复模型后，查看一下模型状态")
             self.run_test(False)
 
-        progbar = Progbar(max_step=total_steps - init_step)
+        progbar = Progbar(max_step=total_steps)
         start_time = time.time()
         for step in range(init_step, total_steps):
             positive_sample, negative_sample, subsampling_weight, mode = next(self.train_iterator)
@@ -1403,7 +1403,7 @@ class MTransE:
                                                  av_subsampling_weight, av_mode)
                 loss = loss + loss2
 
-            progbar.update(step - init_step + 1, [
+            progbar.update(step + 1, [
                 ("loss", loss),
                 ("align", align_loss),
                 ("TransE", TransE_loss),
