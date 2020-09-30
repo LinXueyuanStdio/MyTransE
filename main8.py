@@ -1142,6 +1142,7 @@ class MTransE:
         self.kg1_entity_list, _ = read_ids_and_names(self.kg1_entity_file)
         self.kg2_entity_list, _ = read_ids_and_names(self.kg2_entity_file)
         self.all_triple_file_ext = self.all_triple_file + "_ext"
+        self.filtered_triple_file_ext = self.all_triple_file + "_filtered"
         self.train_triples = read_triple(self.all_triple_file)
 
         self.entity_count = len(self.entity_list)
@@ -1162,15 +1163,19 @@ class MTransE:
             save_triple(self.train_triples, self.all_triple_file_ext)
 
     def filter_triple(self):
-        seeds_set = set()
-        for a, b in self.t.seeds:
-            seeds_set.add(a)
-            seeds_set.add(b)
-        filtered_triple = []
-        for e, a, v in self.train_triples:
-            if e in seeds_set:
-                filtered_triple.append((e, a, v))
-        self.train_triples = filtered_triple
+        if os.path.exists(self.filtered_triple_file_ext):
+            self.train_triples = read_triple(self.filtered_triple_file_ext)
+        else:
+            seeds_set = set()
+            for a, b in self.t.seeds:
+                seeds_set.add(a)
+                seeds_set.add(b)
+            filtered_triple = []
+            for e, a, v in self.train_triples:
+                if e in seeds_set:
+                    filtered_triple.append((e, a, v))
+            self.train_triples = filtered_triple
+            save_triple(self.train_triples, self.filtered_triple_file_ext)
 
     def init_dataset(self):
         logger.info("triple: " + str(len(self.train_triples)))
