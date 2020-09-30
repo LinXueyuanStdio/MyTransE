@@ -1156,6 +1156,7 @@ class MTransE:
                     + " kg2_entity: " + str(len(self.kg2_entity_list)))
 
     def append_align_triple(self):
+        logger.info("数据增强")
         if os.path.exists(self.all_triple_file_ext):
             self.train_triples = read_triple(self.all_triple_file_ext)
         else:
@@ -1163,6 +1164,7 @@ class MTransE:
             save_triple(self.train_triples, self.all_triple_file_ext)
 
     def filter_triple(self):
+        logger.info("过滤出数据精华")
         if os.path.exists(self.filtered_triple_file_ext):
             self.train_triples = read_triple(self.filtered_triple_file_ext)
         else:
