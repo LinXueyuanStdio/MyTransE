@@ -1161,6 +1161,17 @@ class MTransE:
             self.train_triples = append_align_triple(self.train_triples, self.t.train_seeds)
             save_triple(self.train_triples, self.all_triple_file_ext)
 
+    def filter_triple(self):
+        seeds_set = set()
+        for a, b in self.t.seeds:
+            seeds_set.add(a)
+            seeds_set.add(b)
+        filtered_triple = []
+        for e, a, v in self.train_triples:
+            if e in seeds_set:
+                filtered_triple.append((e, a, v))
+        self.train_triples = filtered_triple
+
     def init_dataset(self):
         logger.info("triple: " + str(len(self.train_triples)))
         train_dataloader_head = DataLoader(
@@ -1440,7 +1451,8 @@ class MTransE:
                                     1, step, score,
                                     self.checkpoint_path)
                     save_entity_embedding_list(self.model.entity_embedding, self.embedding_path)
-                save_entity_embedding_list(self.model.entity_embedding, self.embedding_path + "_score_" + str(int(score)))
+                save_entity_embedding_list(self.model.entity_embedding,
+                                           self.embedding_path + "_score_" + str(int(score)))
 
     def run_test(self, soft_align_enable=False):
         computing_time = time.time()
@@ -1468,7 +1480,8 @@ class MTransE:
 @click.option('--soft_align', default=False, help='训练时使用软对齐')
 @click.option('--data_enhance', default=True, help='训练时使用数据增强')
 @click.option('--visualize', default=False, help='训练时可视化')
-def main(recover, lang, soft_align, data_enhance, visualize):
+@click.option('--filtered', default=False, help='训练时过滤')
+def main(recover, lang, soft_align, data_enhance, visualize, filtered):
     result_path = "./result/TransE2/%s/" % lang
     data_path = "./data/%s/" % lang
     m = MTransE(
@@ -1488,6 +1501,8 @@ def main(recover, lang, soft_align, data_enhance, visualize):
     m.init_data()
     if data_enhance:
         m.append_align_triple()
+    if filtered:
+        m.filter_triple()
     if soft_align:
         m.init_soft_align()
     if visualize:
