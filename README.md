@@ -50,3 +50,9 @@ tensorflow-gpu         2.2.0
   Hits@50: 7.84%
   Hits@100: 11.70%
   ```
+  
+## 手抄
+```
+nohup python3 -u t.py > t.log 2>&1 &
+```
+t.py输出到t.log，和当前命令行进程无关，下次登陆还是在执行的
