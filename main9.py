@@ -339,10 +339,10 @@ class KGEModel(nn.Module):
         self.entity_embedding = nn.Parameter(entity_weight)
         # nn.init.normal_(self.entity_embedding)
 
-        self.attr_embedding = nn.Parameter(torch.zeros(nrelation, self.relation_dim))
+        self.relation_embedding = nn.Parameter(torch.zeros(nrelation, self.relation_dim))
         # nn.init.normal_(self.relation_embedding)
         nn.init.uniform_(
-            tensor=self.attr_embedding,
+            tensor=self.relation_embedding,
             a=-self.embedding_range.item(),
             b=self.embedding_range.item()
         )
@@ -443,7 +443,7 @@ class KGEModel(nn.Module):
             batch_size, negative_sample_size = sample.size(0), 1
             # print(mode, sample[0].size(), sample[1].size())
             a = torch.index_select(
-                self.attr_embedding,
+                self.relation_embedding,
                 dim=0,
                 index=sample[:, 0, 0].view(-1)
             ).unsqueeze(1)
@@ -455,7 +455,7 @@ class KGEModel(nn.Module):
             ).unsqueeze(1)
 
             a_ = torch.index_select(
-                self.attr_embedding,
+                self.relation_embedding,
                 dim=0,
                 index=sample[:, 1, 0].view(-1)
             ).unsqueeze(1)
@@ -474,7 +474,7 @@ class KGEModel(nn.Module):
             # print(mode, tail_part.size(), head_part.size())
 
             a = torch.index_select(
-                self.attr_embedding,
+                self.relation_embedding,
                 dim=0,
                 index=head_part[:, :, 0].view(-1)
             ).view(batch_size, negative_sample_size, -1)
@@ -486,7 +486,7 @@ class KGEModel(nn.Module):
             ).view(batch_size, negative_sample_size, -1)
 
             a_ = torch.index_select(
-                self.attr_embedding,
+                self.relation_embedding,
                 dim=0,
                 index=tail_part[:, 1, 0].view(-1)
             ).unsqueeze(1)
@@ -504,7 +504,7 @@ class KGEModel(nn.Module):
             # head_part : batch_size x 2 x 2
             # tail_part : batch_size x sample_size x 2
             a = torch.index_select(
-                self.attr_embedding,
+                self.relation_embedding,
                 dim=0,
                 index=tail_part[:, :, 0].view(-1)
             ).view(batch_size, negative_sample_size, -1)
@@ -516,7 +516,7 @@ class KGEModel(nn.Module):
             ).view(batch_size, negative_sample_size, -1)
 
             a_ = torch.index_select(
-                self.attr_embedding,
+                self.relation_embedding,
                 dim=0,
                 index=head_part[:, 1, 0].view(-1)
             ).unsqueeze(1)
@@ -540,7 +540,7 @@ class KGEModel(nn.Module):
             ).unsqueeze(1)
 
             relation = torch.index_select(
-                self.attr_embedding,
+                self.relation_embedding,
                 dim=0,
                 index=sample[:, 1]
             ).unsqueeze(1)
@@ -564,7 +564,7 @@ class KGEModel(nn.Module):
             ).view(batch_size, negative_sample_size, -1)
 
             relation = torch.index_select(
-                self.attr_embedding,
+                self.relation_embedding,
                 dim=0,
                 index=tail_part[:, 1]
             ).unsqueeze(1)
@@ -588,7 +588,7 @@ class KGEModel(nn.Module):
             ).unsqueeze(1)
 
             relation = torch.index_select(
-                self.attr_embedding,
+                self.relation_embedding,
                 dim=0,
                 index=head_part[:, 1]
             ).unsqueeze(1)
