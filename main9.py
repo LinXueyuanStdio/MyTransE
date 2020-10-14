@@ -1514,6 +1514,8 @@ def main(recover, lang, soft_align, data_enhance, visualize, filtered, gcn, my):
         all_attr_file=data_path + "att2id_all",
         all_value_file=data_path + "att_value2id_all",
         all_triple_file=data_path + "att_triple_all",
+        kg1_entity_file=data_path + "ent_ids_1",
+        kg2_entity_file=data_path + "ent_ids_2",
 
         checkpoint_path=result_path + "checkpoint.tar",
         embedding_path=result_path + "ATentsembed.txt",
