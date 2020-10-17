@@ -1,13 +1,15 @@
 import math
 import random
 import pickle
+from time import sleep
+
 import numpy as np
 import sys
 from scipy import spatial
 
 # lang = sys.argv[1]
 # w = float(sys.argv[2])
-lang = 'fr_en'
+lang = 'ja_en'
 # w = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]  #
 
 
@@ -174,7 +176,7 @@ class EAstrategy:
             print('AE+SE 权重策略 w=' + str(ww))
             sim_list.append(ww * sim1 + (1 - ww) * sim2)
         top_lr_list, top_rl_list = self.compute_batch_result(sim_list)
-        self.show_batch_result(top_lr_list, top_rl_list, [" %2.2f " % ww for ww in w])
+        self.show_batch_result(top_lr_list, top_rl_list, [" %2.2f  " % ww for ww in w])
         # for cos_theta in (-1, -0.8, -0.5, -0.3, 0, 0.3, 0.5, 0.8, 1):
         #     sim = np.sqrt(np.square(sim1) + np.square(sim2) - 2 * cos_theta * sim1 * sim2)
         #     self.show_result(sim)
@@ -259,27 +261,27 @@ print('language:' + lang)
 
 struct_embedding = 'result/test0/' + lang + '/RTentsembed.pkl'
 # attribute_embedding = 'result/' + lang + '/ATentsembed.txt'
-attribute_embedding = 'result/test3/ATentsembed.txt_score_44'
-test.read_SE_AE(struct_embedding, attribute_embedding)
+# attribute_embedding = 'result/test3/ATentsembed.txt_score_44'
+# test.read_SE_AE(struct_embedding, attribute_embedding)
 # print('拼接策略')
 # 拼接策略
 # test.EAlinkstrategy(struct_embedding, attribute_embedding)  # 连接策略
 # test.EAlinkstrategy('2.pkl', './result/ja_en/ATentsembed.txt')  # 连接策略
 # test.get_hits(metric='cityblock')
 
-print('my策略')
+# print('my策略')
 # 拼接策略
-test.EA_my_strategy("cityblock")
+# test.EA_my_strategy("cityblock")
 
 # 权重策略
 # ww = 0.8
 # # test.EAlinkstrategy_weight('data/'+lang+'/RTentsembed.pkl','data/'+lang+'/ATentsembed.txt', ww) #连接策略
-sim_list = []
-for ww in w:
-    print('AE+SE 权重策略 w=' + str(ww))
-    sim_list.append(test.EAlinkstrategy_weight_sim(ww))
-top_lr_list, top_rl_list = test.compute_batch_result(sim_list)
-test.show_batch_result(top_lr_list, top_rl_list, ["  %2.2f  " % ww for ww in w])
+# sim_list = []
+# for ww in w:
+#     print('AE+SE 权重策略 w=' + str(ww))
+#     sim_list.append(test.EAlinkstrategy_weight_sim(ww))
+# top_lr_list, top_rl_list = test.compute_batch_result(sim_list)
+# test.show_batch_result(top_lr_list, top_rl_list, [" %2.2f  " % ww for ww in w])
 
 # 迭代策略
 # test.EAlinkstrategy_iteration('results/'+'emb_it_'+lang+'.pkl')
@@ -289,9 +291,9 @@ test.show_batch_result(top_lr_list, top_rl_list, ["  %2.2f  " % ww for ww in w])
 #     w.write('\n')
 
 # 消融实验
-# print("关系消融实验")
-# test.XRR(struct_embedding)
-# test.get_hits()
+print("关系消融实验")
+test.XRR(struct_embedding)
+test.get_hits()
 
 # print("属性消融实验")
 # test.XRA(attribute_embedding)
