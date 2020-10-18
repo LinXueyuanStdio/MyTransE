@@ -9,11 +9,11 @@ from scipy import spatial
 
 # lang = sys.argv[1]
 # w = float(sys.argv[2])
-lang = 'ja_en'
+lang = 'fr_en'
 # w = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]  #
 
 
-w = [0.7, 0.75, 0.8, 0.85, 0.9, 0.95]  #
+w = [0.1, 0.2, 0.5, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]  #
 
 
 # w = [0.2, 0.5, 0.8]  #
@@ -29,16 +29,9 @@ class EAstrategy:
     AE_embedding = []
 
     def read_EA_list(self, EAfile):
-        # with open(EAfile,'r',encoding='utf-8') as r:
-        #     lines=r.readlines()
-        # for line in lines:
-        #     line=line.strip()
-        #     e1, e2=line.split()
-        #     if e1 in self.seeds_map:
-        #         print('error,',e1)
-        #     else:
-        #         self.seeds_map[e1]=e2
-
+        """
+        读取对齐实体，后70%为测试集
+        """
         ret = []
         with open(EAfile, encoding='utf-8') as f:
             for line in f:
@@ -51,6 +44,9 @@ class EAstrategy:
             self.seeds = ret[length:]
 
     def read_KG1_and_KG2_list(self, kg1file, kg2file):
+        """
+        读取KG1和KG2的实体id
+        """
         with open(kg1file, 'r', encoding='utf-8') as r:
             kg1lines = r.readlines()
         with open(kg2file, 'r', encoding='utf-8') as r:
@@ -62,14 +58,14 @@ class EAstrategy:
             line = line.strip()
             self.kg2E.append(line.split()[0])
 
-    def XRR(self, RTEembeddingfile):
+    def XRR(self, filename="*.pkl"):
         self.linkEmbedding = []
-        RTElines = pickle.load(open(RTEembeddingfile, 'rb'), encoding='utf-8')
-        entlength = len(RTElines)
-        for i in range(entlength):
-            rline = RTElines[i]
-            rline_list = rline.tolist()
-            self.linkEmbedding.append(rline_list)
+        data = pickle.load(open(filename, 'rb'), encoding='utf-8')
+        ent_length = len(data)
+        for i in range(ent_length):
+            line = data[i]
+            line_list = line.tolist()
+            self.linkEmbedding.append(line_list)
 
     def XRA(self, ATEembeddingfile):
         self.linkEmbedding = []
@@ -82,6 +78,9 @@ class EAstrategy:
             self.linkEmbedding.append(aline_list)
 
     def EAlinkstrategy(self, RTEembeddingfile, ATEembeddingfile):
+        """
+        拼接策略
+        """
         self.linkEmbedding = []
         RTElines = pickle.load(open(RTEembeddingfile, 'rb'), encoding='utf-8')
         with open(ATEembeddingfile, 'r', encoding='utf-8') as r:
@@ -95,7 +94,10 @@ class EAstrategy:
             aline_list = [float(a) for a in aline_list]
             self.linkEmbedding.append(rline_list + aline_list)
 
-    def read_SE_AE(self, RTEembeddingfile, ATEembeddingfile):
+    def read_SE_AE(self, RTEembeddingfile="*.pkl", ATEembeddingfile="*.txt"):
+        """
+        同时读取属性嵌入和关系嵌入
+        """
         self.SE_embedding = []
         self.AE_embedding = []
         RTElines = pickle.load(open(RTEembeddingfile, 'rb'), encoding='utf-8')
@@ -143,57 +145,37 @@ class EAstrategy:
         RTElines = pickle.load(open(RTEembeddingfile, 'rb'), encoding='utf-8')
         self.linkEmbedding = RTElines
 
-    # def distance(self,yuzhi):
-    #     count = 0
-    #     for i in self.kg1E:
-    #         count += 1
-    #         align_id_list={} #id:juli
-    #         for j in self.kg2E:
-    #             dimension=len(self.linkEmbedding[int(j)])
-    #             now_dis=0
-    #             for k in range(dimension):
-    #                 now_dis+=abs(float(self.linkEmbedding[int(i)][k])-float(self.linkEmbedding[int(j)][k])) #L1正则化计算
-    #             if now_dis<yuzhi:
-    #                 align_id_list[j]=now_dis
-    #         #对align_id_list按距离进行排序
-    #         sort_align_id_list=sorted(align_id_list.items(),key=lambda x:x[1]) #距离从小到大排序
-    #         sort_align_id_list=sort_align_id_list[:100]
-    #         self.EA_results[i]=sort_align_id_list
-    #         if count % 10 == 0:
-    #             print('w=' + str(w) + ' process:' + str(count) + '/' + str(len(self.kg1E)))
-    #     print('complete distancing')
     def EA_my_strategy(self, metric='euclidean'):
+        """
+        距离权重策略
+        """
         sim1 = self.get_sim(self.SE_embedding, metric)
         sim2 = self.get_sim(self.AE_embedding, metric)
-        # print("SE")
-        # self.result(sim1)
-        # print("AE")
-        # self.result(sim2)
-        # print("AE+SE")
-        # self.result(sim1 + sim2)
         sim_list = []
+        print('距离权重策略', end=" ")
         for ww in w:
-            print('AE+SE 权重策略 w=' + str(ww))
+            print(str(ww), end=" ")
             sim_list.append(ww * sim1 + (1 - ww) * sim2)
+        print("")
         top_lr_list, top_rl_list = self.compute_batch_result(sim_list)
         self.show_batch_result(top_lr_list, top_rl_list, [" %2.2f  " % ww for ww in w])
-        # for cos_theta in (-1, -0.8, -0.5, -0.3, 0, 0.3, 0.5, 0.8, 1):
-        #     sim = np.sqrt(np.square(sim1) + np.square(sim2) - 2 * cos_theta * sim1 * sim2)
-        #     self.show_result(sim)
 
     def get_sim(self, embedding_matrix, metric='cityblock'):
+        """
+        embedding_matrix是嵌入矩阵，根据嵌入矩阵和测试集seeds计算距离矩阵sim
+        """
         Lvec = np.array([embedding_matrix[e1] for e1, e2 in self.seeds])
         Rvec = np.array([embedding_matrix[e2] for e1, e2 in self.seeds])
         sim = spatial.distance.cdist(Lvec, Rvec, metric=metric)
         return sim
 
     def get_hits(self, top_k=(1, 10, 50, 100), metric='cityblock'):
-        Lvec = np.array([self.linkEmbedding[e1] for e1, e2 in self.seeds])
-        Rvec = np.array([self.linkEmbedding[e2] for e1, e2 in self.seeds])
-        sim = spatial.distance.cdist(Lvec, Rvec, metric=metric)
-        self.result(sim, top_k)
+        self.result(self.get_sim(self.linkEmbedding, metric), top_k)
 
     def compute_batch_result(self, sim_list, top_k=(1, 10, 50, 100)):
+        """
+        sim_list是距离矩阵组成的列表，批量计算hits指标
+        """
         top_lr_list = []
         top_rl_list = []
         for sim in sim_list:
@@ -203,6 +185,9 @@ class EAstrategy:
         return top_lr_list, top_rl_list
 
     def compute_result(self, sim, top_k=(1, 10, 50, 100)):
+        """
+        sim是距离矩阵，根据距离矩阵计算hits指标
+        """
         top_lr = [0] * len(top_k)
         for i in range(len(self.seeds)):  # 对于每个KG1实体
             rank = sim[i, :].argsort()
@@ -224,6 +209,9 @@ class EAstrategy:
         self.show_result(top_lr, top_rl, top_k)
 
     def show_batch_result(self, top_lr_list, top_rl_list, titles=(), top_k=(1, 10, 50, 100)):
+        """
+        批量打印
+        """
         print("          ", end="")
         for i in titles:
             print(i, end="")
@@ -242,6 +230,9 @@ class EAstrategy:
             print()
 
     def show_result(self, top_lr, top_rl, top_k=(1, 10, 50, 100)):
+        """
+        打印一个
+        """
         print('For each left:')
         for i in range(len(top_lr)):
             print('Hits@%d: %.2f%%' % (top_k[i], top_lr[i] / len(self.seeds) * 100))
@@ -260,18 +251,18 @@ test.read_KG1_and_KG2_list('data/' + lang + '/ent_ids_1', 'data/' + lang + '/ent
 print('language:' + lang)
 
 struct_embedding = 'result/test0/' + lang + '/RTentsembed.pkl'
-# attribute_embedding = 'result/' + lang + '/ATentsembed.txt'
+attribute_embedding = 'result/test4/' + lang + '.txt'
 # attribute_embedding = 'result/test3/ATentsembed.txt_score_44'
-# test.read_SE_AE(struct_embedding, attribute_embedding)
+test.read_SE_AE(struct_embedding, attribute_embedding)
 # print('拼接策略')
 # 拼接策略
 # test.EAlinkstrategy(struct_embedding, attribute_embedding)  # 连接策略
 # test.EAlinkstrategy('2.pkl', './result/ja_en/ATentsembed.txt')  # 连接策略
 # test.get_hits(metric='cityblock')
 
-# print('my策略')
-# 拼接策略
-# test.EA_my_strategy("cityblock")
+print('距离权重策略')
+# 距离权重策略
+test.EA_my_strategy("cityblock")
 
 # 权重策略
 # ww = 0.8
@@ -295,11 +286,9 @@ print("关系消融实验")
 test.XRR(struct_embedding)
 test.get_hits()
 
-# print("属性消融实验")
-# test.XRA(attribute_embedding)
-# test.XRA('./result/ja_en/ATentsembed.txt')
-# test.XRA('res/entity2vec.bern')
-# test.get_hits()
+print("属性消融实验")
+test.XRA(attribute_embedding)
+test.get_hits()
 
 # 迭代权重策略
 # test.EAlinkstrategy_iteration('results/'+'emb_itwe_0.5_'+lang+'.pkl')
