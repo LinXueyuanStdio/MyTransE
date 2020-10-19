@@ -614,7 +614,7 @@ class KGEModel(nn.Module):
         # output = self.layer2(output)
         # tail = self.layer3(output)
 
-        score = self.TransE(head, relation, tail, mode)
+        score = self.RotatE(head, relation, tail, mode)
         return score
 
     def loss_av(self, a, v, a_, v_, mode):
