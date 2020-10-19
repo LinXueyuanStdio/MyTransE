@@ -1499,14 +1499,15 @@ class MTransE:
 @click.command()
 @click.option('--recover', default=False, help='使用上一次训练的模型')
 @click.option('--lang', default='fr_en', help='使用的数据集')
+@click.option('--output', default='./result/TransE2', help='输出目录，将在此目录下保存权重文件、嵌入文件')
 @click.option('--soft_align', default=False, help='训练时使用软对齐')
 @click.option('--data_enhance', default=True, help='训练时使用数据增强')
 @click.option('--visualize', default=False, help='训练时可视化')
 @click.option('--filtered', default=False, help='训练时过滤')
 @click.option('--gcn', default=False, help='GCN-Align的对齐模块')
 @click.option('--my', default=False, help='我设计的对齐模块')
-def main(recover, lang, soft_align, data_enhance, visualize, filtered, gcn, my):
-    result_path = "./result/TransE2/%s/" % lang
+def main(recover, lang, output, soft_align, data_enhance, visualize, filtered, gcn, my):
+    result_path = (output + "/%s/") % lang
     data_path = "./data/%s/" % lang
     m = MTransE(
         entity_align_file=data_path + "ref_ent_ids",
