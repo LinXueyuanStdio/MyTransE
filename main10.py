@@ -1039,14 +1039,25 @@ def read_ids_and_names(dir_path, sp="\t"):
     return ids, names
 
 
+def read_relation_count(triple_path):
+    with open(triple_path, 'r') as fr:
+        r = []
+        for line in fr:
+            line_split = line.split()
+            rel = int(line_split[1])
+            r.append(rel)
+        r = list(set(r))
+    return len(r)
+
+
 def read_triple(triple_path):
     with open(triple_path, 'r') as fr:
         triple = set()
         for line in fr:
             line_split = line.split()
             head = int(line_split[0])
-            tail = int(line_split[1])
-            rel = int(line_split[2])
+            tail = int(line_split[2])
+            rel = int(line_split[1])
             triple.add((head, rel, tail))
     return list(triple)
 
@@ -1054,7 +1065,7 @@ def read_triple(triple_path):
 def save_triple(triples, triple_path):
     with open(triple_path, 'w') as fr:
         for triple in triples:
-            fr.write("%d\t%d\t%d\n" % (triple[0], triple[2], triple[1]))
+            fr.write("%d\t%d\t%d\n" % (triple[0], triple[1], triple[2]))
 
 
 def append_align_triple(triple: List[Tuple[int, int, int]], entity_align_list: List[Tuple[int, int]]):
@@ -1143,9 +1154,11 @@ class MTransE:
         logger.info("数据增强")
         if os.path.exists(self.all_triple_file_ext):
             self.train_triples = read_triple(self.all_triple_file_ext)
+            self.attr_count = read_relation_count(self.all_triple_file_ext)
         else:
             self.train_triples = append_align_triple(self.train_triples, self.t.train_seeds)
             save_triple(self.train_triples, self.all_triple_file_ext)
+            self.attr_count = read_relation_count(self.all_triple_file_ext)
 
     def filter_triple(self):
         logger.info("过滤出数据精华")
@@ -1514,6 +1527,7 @@ def main(recover, lang, output, soft_align, data_enhance, visualize, filtered, g
     m.init_model()
     m.init_optimizer()
     m.run_train(need_to_load_checkpoint=recover, gcn=gcn, my=my)
+
 
 # git pull && CUDA_VISIBLE_DEVICES=1 python main10.py --data_enhance true --gcn true --lang fr_en --output ./result/struct_TransE
 if __name__ == '__main__':
