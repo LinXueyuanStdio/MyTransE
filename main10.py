@@ -347,28 +347,9 @@ class KGEModel(nn.Module):
             b=self.embedding_range.item()
         )
 
-        self.value_embedding = nn.Parameter(torch.zeros(nvalue, self.value_dim))
-        # nn.init.normal_(self.value_embedding)
-        nn.init.uniform_(
-            tensor=self.value_embedding,
-            a=-self.embedding_range.item(),
-            b=self.embedding_range.item()
-        )
         # endregion
 
         # region align
-        self.M = nn.Parameter(torch.zeros(self.entity_dim, self.entity_dim))
-        nn.init.orthogonal_(self.M)  # 正交矩阵
-
-        self.bias = nn.Parameter(torch.zeros(self.entity_dim))
-        nn.init.normal_(self.bias)
-        self.ones = nn.Parameter(torch.ones(self.entity_dim, self.entity_dim, dtype=torch.float32),
-                                 requires_grad=False)  # 200 * 200
-        self.diag = nn.Parameter(torch.eye(self.entity_dim, dtype=torch.float32),
-                                 requires_grad=False)  # 200 * 200
-        self.layer1 = nn.Linear(self.entity_dim, 2 * self.entity_dim)
-        self.layer2 = nn.Linear(2 * self.entity_dim, 2 * self.entity_dim)
-        self.layer3 = nn.Linear(2 * self.entity_dim, self.entity_dim)
         # endregion
 
     def forward(self, sample, mode='single'):
@@ -449,7 +430,7 @@ class KGEModel(nn.Module):
             ).unsqueeze(1)
 
             v = torch.index_select(
-                self.value_embedding,
+                self.entity_embedding,
                 dim=0,
                 index=sample[:, 0, 1].view(-1)
             ).unsqueeze(1)
@@ -461,7 +442,7 @@ class KGEModel(nn.Module):
             ).unsqueeze(1)
 
             v_ = torch.index_select(
-                self.value_embedding,
+                self.entity_embedding,
                 dim=0,
                 index=sample[:, 1, 1].view(-1)
             ).unsqueeze(1)
@@ -480,7 +461,7 @@ class KGEModel(nn.Module):
             ).view(batch_size, negative_sample_size, -1)
 
             v = torch.index_select(
-                self.value_embedding,
+                self.entity_embedding,
                 dim=0,
                 index=head_part[:, :, 1].view(-1)
             ).view(batch_size, negative_sample_size, -1)
@@ -492,7 +473,7 @@ class KGEModel(nn.Module):
             ).unsqueeze(1)
 
             v_ = torch.index_select(
-                self.value_embedding,
+                self.entity_embedding,
                 dim=0,
                 index=tail_part[:, 1, 1].view(-1)
             ).unsqueeze(1)
@@ -510,7 +491,7 @@ class KGEModel(nn.Module):
             ).view(batch_size, negative_sample_size, -1)
 
             v = torch.index_select(
-                self.value_embedding,
+                self.entity_embedding,
                 dim=0,
                 index=tail_part[:, :, 1].view(-1)
             ).view(batch_size, negative_sample_size, -1)
@@ -522,7 +503,7 @@ class KGEModel(nn.Module):
             ).unsqueeze(1)
 
             v_ = torch.index_select(
-                self.value_embedding,
+                self.entity_embedding,
                 dim=0,
                 index=head_part[:, 1, 1].view(-1)
             ).unsqueeze(1)
@@ -546,7 +527,7 @@ class KGEModel(nn.Module):
             ).unsqueeze(1)
 
             tail = torch.index_select(
-                self.value_embedding,
+                self.entity_embedding,
                 dim=0,
                 index=sample[:, 2]
             ).unsqueeze(1)
@@ -570,7 +551,7 @@ class KGEModel(nn.Module):
             ).unsqueeze(1)
 
             tail = torch.index_select(
-                self.value_embedding,
+                self.entity_embedding,
                 dim=0,
                 index=tail_part[:, 2]
             ).unsqueeze(1)
@@ -594,7 +575,7 @@ class KGEModel(nn.Module):
             ).unsqueeze(1)
 
             tail = torch.index_select(
-                self.value_embedding,
+                self.entity_embedding,
                 dim=0,
                 index=tail_part.view(-1)
             ).view(batch_size, negative_sample_size, -1)
@@ -1514,7 +1495,7 @@ def main(recover, lang, output, soft_align, data_enhance, visualize, filtered, g
         all_entity_file=data_path + "ent_ids_all",
         all_attr_file=data_path + "att2id_all",
         all_value_file=data_path + "att_value2id_all",
-        all_triple_file=data_path + "att_triple_all",
+        all_triple_file=data_path + "triples_struct_all",
         kg1_entity_file=data_path + "ent_ids_1",
         kg2_entity_file=data_path + "ent_ids_2",
 
