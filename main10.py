@@ -595,7 +595,7 @@ class KGEModel(nn.Module):
         # output = self.layer2(output)
         # tail = self.layer3(output)
 
-        score = self.RotatE(head, relation, tail, mode)
+        score = self.TransE(head, relation, tail, mode)
         return score
 
     def loss_av(self, a, v, a_, v_, mode):
@@ -1078,6 +1078,8 @@ def append_align_triple(triple: List[Tuple[int, int, int]], entity_align_list: L
     for entity, attr, value in triple:
         if entity in align_set:
             triple_replace_with_align.append((align_set[entity], attr, value))
+        if value in align_set:
+            triple_replace_with_align.append((entity, attr, align_set[value]))
         count += 1
         bar.update(count, [("step", count)])
     return triple + triple_replace_with_align
