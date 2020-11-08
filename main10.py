@@ -1080,6 +1080,8 @@ def append_align_triple(triple: List[Tuple[int, int, int]], entity_align_list: L
             triple_replace_with_align.append((align_set[entity], attr, value))
         if value in align_set:
             triple_replace_with_align.append((entity, attr, align_set[value]))
+        if (entity in align_set) and (value in align_set):
+            triple_replace_with_align.append((align_set[entity], attr, align_set[value]))
         count += 1
         bar.update(count, [("step", count)])
     return triple + triple_replace_with_align
@@ -1174,7 +1176,7 @@ class MTransE:
         logger.info("triple: " + str(len(self.train_triples)))
         train_dataloader_head = DataLoader(
             TrainDataset(self.train_triples,
-                         self.entity_count, self.attr_count, self.value_count, 1024,
+                         self.entity_count, self.attr_count, self.entity_count, 1024,
                          'head-batch'),
             batch_size=1024,
             shuffle=False,
@@ -1183,7 +1185,7 @@ class MTransE:
         )
         train_dataloader_tail = DataLoader(
             TrainDataset(self.train_triples,
-                         self.entity_count, self.attr_count, self.value_count, 1024,
+                         self.entity_count, self.attr_count, self.entity_count, 1024,
                          'tail-batch'),
             batch_size=1024,
             shuffle=False,
@@ -1522,7 +1524,7 @@ def main(recover, lang, output, soft_align, data_enhance, visualize, filtered, g
     m.init_optimizer()
     m.run_train(need_to_load_checkpoint=recover, gcn=gcn, my=my)
 
-
+# git pull && CUDA_VISIBLE_DEVICES=1 python main10.py --data_enhance true --gcn true --lang fr_en --output ./result/struct_TransE
 if __name__ == '__main__':
     main()
     # main10.py 用 TransE 来做结构嵌入
