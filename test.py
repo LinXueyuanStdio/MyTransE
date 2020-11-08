@@ -37,7 +37,7 @@ class EAstrategy:
                 for i in range(2):
                     x.append(int(th[i]))
                 ret.append(tuple(x))
-            self.seeds = ret
+            self.seeds = ret[int(len(ret)*0.3):]
 
     def read_KG1_and_KG2_list(self,kg1file,kg2file):
         with open(kg1file,'r',encoding='utf-8') as r:
@@ -173,12 +173,12 @@ print('language:' + lang)
 
 # 消融实验
 # print("关系消融实验")
-# test.XRR('data/' + lang + '/RTentsembed.pkl')
-# test.get_hits()
+test.XRR('../GCN-Align/3_7.pkl')
+test.get_hits()
 
 # print("属性消融实验")
-test.XRA('result/'+lang+'/ATentsembed.txt')
-test.get_hits()
+# test.XRA('result/test0/'+lang+'/ATentsembed.txt')
+# test.get_hits()
 
 # 迭代权重策略
 # test.EAlinkstrategy_iteration('results/'+'emb_itwe_0.5_'+lang+'.pkl')

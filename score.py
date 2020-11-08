@@ -9,11 +9,12 @@ from scipy import spatial
 
 # lang = sys.argv[1]
 # w = float(sys.argv[2])
-lang = 'fr_en'
+lang = 'zh_en'
 # w = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]  #
 
 
-w = [0.1, 0.2, 0.5, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]  #
+# w = [0.1, 0.2, 0.5, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]  #
+w = [0.95, 0.96, 0.965, 0.97, 0.975, 0.98, 0.99, 1]  #
 
 
 # w = [0.2, 0.5, 0.8]  #
@@ -157,8 +158,16 @@ class EAstrategy:
             print(str(ww), end=" ")
             sim_list.append(ww * sim1 + (1 - ww) * sim2)
         print("")
-        top_lr_list, top_rl_list = self.compute_batch_result(sim_list)
-        self.show_batch_result(top_lr_list, top_rl_list, [" %2.2f  " % ww for ww in w])
+        self.result_batch(sim_list, [" %2.2f  " % ww for ww in w])
+
+    def EA_distance_strategy(self, x, y, metric='euclidean'):
+        """
+        距离权重策略
+        """
+        sim1 = self.get_sim(self.SE_embedding, metric)
+        sim2 = self.get_sim(self.AE_embedding, metric)
+        print('距离权重策略 (', x, ", ", y, ")")
+        self.result(x * sim1 + y * sim2)
 
     def get_sim(self, embedding_matrix, metric='cityblock'):
         """
@@ -203,6 +212,10 @@ class EAstrategy:
                 if rank_index < top_k[j]:
                     top_rl[j] += 1
         return top_lr, top_rl
+
+    def result_batch(self, sim_list, titles=(), top_k=(1, 10, 50, 100)):
+        top_lr_list, top_rl_list = self.compute_batch_result(sim_list, top_k)
+        self.show_batch_result(top_lr_list, top_rl_list, titles)
 
     def result(self, sim, top_k=(1, 10, 50, 100)):
         top_lr, top_rl = self.compute_result(sim, top_k)
@@ -250,7 +263,7 @@ test.read_KG1_and_KG2_list('data/' + lang + '/ent_ids_1', 'data/' + lang + '/ent
 
 print('language:' + lang)
 
-struct_embedding = 'result/test0/' + lang + '/RTentsembed.pkl'
+struct_embedding = './rdgcn_zh_en.pkl'
 attribute_embedding = 'result/test4/' + lang + '.txt'
 # attribute_embedding = 'result/test3/ATentsembed.txt_score_44'
 test.read_SE_AE(struct_embedding, attribute_embedding)
@@ -262,7 +275,25 @@ test.read_SE_AE(struct_embedding, attribute_embedding)
 
 print('距离权重策略')
 # 距离权重策略
-test.EA_my_strategy("cityblock")
+# test.EA_my_strategy("cityblock")
+sim1 = test.get_sim(test.SE_embedding, "cityblock")
+sim2 = test.get_sim(test.AE_embedding, "cityblock")
+for x in range(10, 21):
+    x /= 10
+    print("x=", x)
+    sim_list = []
+    titles = ()
+    for y in range(-19, 21):
+        if y == -10 or y == 0 or y == 10 or y == 20:
+            test.result_batch(sim_list, titles)
+            sim_list = []
+            titles = ()
+            continue
+        y /= 20
+        print('距离权重策略 (', x, ", ", y, ")")
+        titles += tuple(" %2.2f  " % y)
+        sim = x * sim1 + y * sim2
+        sim_list.append(sim)
 
 # 权重策略
 # ww = 0.8
@@ -282,13 +313,13 @@ test.EA_my_strategy("cityblock")
 #     w.write('\n')
 
 # 消融实验
-print("关系消融实验")
-test.XRR(struct_embedding)
-test.get_hits()
-
-print("属性消融实验")
-test.XRA(attribute_embedding)
-test.get_hits()
+# print("关系消融实验")
+# test.XRR(struct_embedding)
+# test.get_hits()
+#
+# print("属性消融实验")
+# test.XRA(attribute_embedding)
+# test.get_hits()
 
 # 迭代权重策略
 # test.EAlinkstrategy_iteration('results/'+'emb_itwe_0.5_'+lang+'.pkl')
