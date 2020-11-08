@@ -616,11 +616,13 @@ class KGEModel(nn.Module):
         return score
 
     def TransE(self, head, relation, tail, mode):
-
+        print(head.size(), relation.size(), tail.size())
         if mode == 'head-batch':
             score = head + (relation - tail)
         else:
             score = (head + relation) - tail
+        print(score.size())
+        print(torch.norm(score, p=1, dim=2).size())
         score = self.gamma.item() - torch.norm(score, p=1, dim=2)
         return score
 
