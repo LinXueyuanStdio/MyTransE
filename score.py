@@ -9,15 +9,16 @@ from scipy import spatial
 
 # lang = sys.argv[1]
 # w = float(sys.argv[2])
-lang = 'zh_en'
+lang = 'fr_en'
 # w = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]  #
 
 
 # w = [0.1, 0.2, 0.5, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]  #
-w = [0.95, 0.96, 0.965, 0.97, 0.975, 0.98, 0.99, 1]  #
+# w = [0.95, 0.96, 0.965, 0.97, 0.975, 0.98, 0.99, 1]  #
 
 
 # w = [0.2, 0.5, 0.8]  #
+w = [0.2, 0.25, 0.3, 0.35, 0.4]  #
 
 
 class EAstrategy:
@@ -66,7 +67,7 @@ class EAstrategy:
         for i in range(ent_length):
             line = data[i]
             line_list = line.tolist()
-            self.linkEmbedding.append(line_list)
+            self.linkEmbedding.append([float(j) for j in line_list])
 
     def XRA(self, ATEembeddingfile):
         self.linkEmbedding = []
@@ -76,7 +77,7 @@ class EAstrategy:
         for i in range(entlength):
             aline = ATElines[i].strip()
             aline_list = aline.split()
-            self.linkEmbedding.append(aline_list)
+            self.linkEmbedding.append([float(j) for j in aline_list])
 
     def EAlinkstrategy(self, RTEembeddingfile, ATEembeddingfile):
         """
@@ -115,11 +116,11 @@ class EAstrategy:
             aline_list_w = [float(j) for j in aline_list]
             self.AE_embedding.append(aline_list_w)
 
-    def EAlinkstrategy_weight_sim(self, w):
+    def EAlinkstrategy_weight_sim(self, SE_embedding, AE_embedding, w):
         embedding = []
-        for i in range(len(self.SE_embedding)):
-            SE_w = [j * w for j in self.SE_embedding[i]]
-            AE_w = [j * (1 - w) for j in self.AE_embedding[i]]
+        for i in range(len(SE_embedding)):
+            SE_w = [j * w for j in SE_embedding[i]]
+            AE_w = [j * (1 - w) for j in AE_embedding[i]]
             add_weight = list(map(lambda x: x[0] + x[1], zip(SE_w, AE_w)))
             embedding.append(add_weight)
         return self.get_sim(embedding)
@@ -263,41 +264,23 @@ test.read_KG1_and_KG2_list('data/' + lang + '/ent_ids_1', 'data/' + lang + '/ent
 
 print('language:' + lang)
 
-struct_embedding = './rdgcn_zh_en.pkl'
-attribute_embedding = 'result/test4/' + lang + '.txt'
+# struct_embedding = 'result/test8/AE_gcn_fr_en.pkl'
+# attribute_embedding = 'result/test7/' + lang + '_ATentsembed.txt'
 # attribute_embedding = 'result/test3/ATentsembed.txt_score_44'
-test.read_SE_AE(struct_embedding, attribute_embedding)
+# test.read_SE_AE(struct_embedding, attribute_embedding)
 # print('拼接策略')
 # 拼接策略
 # test.EAlinkstrategy(struct_embedding, attribute_embedding)  # 连接策略
 # test.EAlinkstrategy('2.pkl', './result/ja_en/ATentsembed.txt')  # 连接策略
 # test.get_hits(metric='cityblock')
 
-print('距离权重策略')
+# print('距离权重策略')
 # 距离权重策略
 # test.EA_my_strategy("cityblock")
-sim1 = test.get_sim(test.SE_embedding, "cityblock")
-sim2 = test.get_sim(test.AE_embedding, "cityblock")
-for x in range(10, 21):
-    x /= 10
-    print("x=", x)
-    sim_list = []
-    titles = ()
-    for y in range(-19, 21):
-        if y == -10 or y == 0 or y == 10 or y == 20:
-            test.result_batch(sim_list, titles)
-            sim_list = []
-            titles = ()
-            continue
-        y /= 20
-        print('距离权重策略 (', x, ", ", y, ")")
-        titles += tuple(" %2.2f  " % y)
-        sim = x * sim1 + y * sim2
-        sim_list.append(sim)
 
 # 权重策略
 # ww = 0.8
-# # test.EAlinkstrategy_weight('data/'+lang+'/RTentsembed.pkl','data/'+lang+'/ATentsembed.txt', ww) #连接策略
+# test.EAlinkstrategy_weight('data/' + lang + '/RTentsembed.pkl', 'data/' + lang + '/ATentsembed.txt', ww)  # 连接策略
 # sim_list = []
 # for ww in w:
 #     print('AE+SE 权重策略 w=' + str(ww))
@@ -313,13 +296,80 @@ for x in range(10, 21):
 #     w.write('\n')
 
 # 消融实验
-# print("关系消融实验")
-# test.XRR(struct_embedding)
-# test.get_hits()
-#
-# print("属性消融实验")
-# test.XRA(attribute_embedding)
-# test.get_hits()
+print("GCN属性消融实验")
+test.XRR('result/test8/AE_gcn_%s.pkl' % lang)
+test.get_hits()
+GCN_AE = test.linkEmbedding
+
+print("GCN结构消融实验")
+test.XRR('result/test0/%s/RTentsembed.pkl' % lang)
+test.get_hits()
+GCN_SE = test.linkEmbedding
+
+print("TransE关系消融实验")
+test.XRA('result/test7/%s_ATentsembed.txt' % lang)
+test.get_hits()
+TransE_SE = test.linkEmbedding
+
+print("TransE属性消融实验")
+test.XRA('result/test4/%s.txt' % lang)
+test.get_hits()
+TransE_AE = test.linkEmbedding
+
+
+def embedding_weight(w_list, embeddingA, embeddingB):
+    l = []
+    for ww in w_list:
+        s = test.EAlinkstrategy_weight_sim(embeddingA, embeddingB, ww)
+        l.append(s)
+    test.result_batch(l, [" %2.2f  " % ww for ww in w_list])
+
+
+def distance_weight(w_list, embeddingA, embeddingB):
+    sim_list = []
+    print('距离权重策略', end=" ")
+    for ww in w_list:
+        print(str(ww), end=" ")
+        sim1 = test.get_sim(embeddingA)
+        sim2 = test.get_sim(embeddingB)
+        sim_list.append(ww * sim1 + (1 - ww) * sim2)
+    print("")
+    test.result_batch(sim_list, [" %2.2f  " % ww for ww in w_list])
+
+
+def link_weight(w_list, embeddingA, embeddingB):
+    sim_list = []
+    embeddingA = np.array(embeddingA)
+    embeddingB = np.array(embeddingB)
+    print('距离权重策略', end=" ")
+    for ww in w_list:
+        print(str(ww), end=" ")
+        vec = np.concatenate([embeddingA * ww, embeddingB * (1.0 - ww)], axis=1)
+        sim = test.get_sim(vec)
+        sim_list.append(sim)
+    print("")
+    test.result_batch(sim_list, [" %2.2f  " % ww for ww in w_list])
+
+
+print("TransE属性+TransE结构 基于嵌入分配")
+embedding_weight([0.05, 0.1, 0.15], TransE_AE, TransE_SE)
+print("TransE属性+TransE结构 基于距离分配")
+distance_weight([0.25, 0.3, 0.35, 0.4, 0.45], TransE_AE, TransE_SE)
+print("TransE属性+GCN结构 基于嵌入分配")
+embedding_weight([0.05, 0.1, 0.15, 0.5], TransE_AE, GCN_SE)
+print("TransE属性+GCN结构 基于距离分配")
+distance_weight([0.05, 0.1, 0.15, 0.2, 0.25, 0.3], TransE_AE, GCN_SE)
+print("GCN属性+TransE结构 基于嵌入分配")
+embedding_weight([0.05, 0.1, 0.15, 0.5], GCN_AE, TransE_SE)
+print("GCN属性+TransE结构 基于距离分配")
+distance_weight([0.25, 0.3, 0.35, 0.4], GCN_AE, TransE_SE)
+
+print("GCN属性+GCN结构 基于嵌入分配")
+embedding_weight([0.05, 0.1, 0.15, 0.2], GCN_AE, GCN_SE)
+print("GCN属性+GCN结构 基于距离分配")
+distance_weight([0.05, 0.1, 0.15, 0.2], GCN_AE, GCN_SE)
+# print("GCN属性+GCN结构 基于嵌入拼接分配")
+# link_weight([0.05, 0.1, 0.15, 0.2, 0.5, 0.8, 0.85, 0.9, 0.95], GCN_AE, GCN_SE)
 
 # 迭代权重策略
 # test.EAlinkstrategy_iteration('results/'+'emb_itwe_0.5_'+lang+'.pkl')
