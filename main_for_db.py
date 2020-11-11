@@ -1378,8 +1378,8 @@ class MTransE:
     def run_train(self, need_to_load_checkpoint=True, gcn=False, my=False):
         logger.info("start training")
         init_step = 1
-        total_steps = 500001
-        test_steps = 5000
+        total_steps = 5000
+        test_steps = 500
         score = 0
         last_score = score
 
