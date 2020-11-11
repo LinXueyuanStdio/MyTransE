@@ -864,7 +864,7 @@ class Tester:
             self.seeds = ret
         # 80%训练集，20%测试集
         train_percent = 0.3
-        train_max_idx = int(train_percent * len(self.seeds))
+        train_max_idx = 341#int(train_percent * len(self.seeds))
         self.train_seeds = self.seeds[:train_max_idx]
         self.test_seeds = self.seeds[train_max_idx:]
         self.left_ids = []
