@@ -561,16 +561,13 @@ class NegSampleModel(SubModel):
 
     def score(self, sample):
         subsample, mode = sample
-        print(sample)
-        print(subsample)
-        print(mode)
         return self.forward(subsample, mode)
 
-    def forward(self, sample, mode):
+    def forward(self, sample, mode:str):
         raise NotImplementedError
 
     @staticmethod
-    def loss(model, model_key, positive_sample, negative_sample, subsampling_weight, mode, single_mode="xxx-single"):
+    def get_loss(model, model_key, positive_sample, negative_sample, subsampling_weight, mode, single_mode="xxx-single"):
         negative_score = model(((positive_sample, negative_sample), mode), model_key=model_key)
         negative_score = F.logsigmoid(-negative_score).mean(dim=1)
 
@@ -589,8 +586,8 @@ class RelationTripleModel(NegSampleModel):
         self.entity_embedding = entity_embedding
         self.relation_embedding = relation_embedding
 
-    def forward(self, sample, mode):
-        if mode == 'triple-single':
+    def forward(self, sample, mode:str):
+        if mode.endswith("single"):
             batch_size, negative_sample_size = sample.size(0), 1
 
             head = torch.index_select(
@@ -610,7 +607,7 @@ class RelationTripleModel(NegSampleModel):
                 dim=0,
                 index=sample[:, 2]
             ).unsqueeze(1)
-        elif mode == 'triple-head-batch':
+        elif mode.endswith("head-batch"):
             tail_part, head_part = sample
             # head_part : batch_size x sample_size
             # tail_part : batch_size x 3
@@ -633,7 +630,7 @@ class RelationTripleModel(NegSampleModel):
                 dim=0,
                 index=tail_part[:, 2]
             ).unsqueeze(1)
-        elif mode == 'triple-tail-batch':
+        elif mode.endswith("tail-batch"):
 
             head_part, tail_part = sample
             # head_part : batch_size x 3
@@ -725,7 +722,7 @@ class AttrTripleModel(NegSampleModel):
         self.value_embedding = value_embedding
 
     def forward(self, sample, mode):
-        if mode == 'attr-triple-single':
+        if mode.endswith("single"):
             batch_size, negative_sample_size = sample.size(0), 1
 
             head = torch.index_select(
@@ -746,7 +743,7 @@ class AttrTripleModel(NegSampleModel):
                 index=sample[:, 2]
             ).unsqueeze(1)
 
-        elif mode == 'attr-triple-head-batch':
+        elif mode.endswith("head-batch"):
             tail_part, head_part = sample
             # head_part : batch_size x sample_size
             # tail_part : batch_size x 3
@@ -770,7 +767,7 @@ class AttrTripleModel(NegSampleModel):
                 index=tail_part[:, 2]
             ).unsqueeze(1)
 
-        elif mode == 'attr-triple-tail-batch':
+        elif mode.endswith("tail-batch"):
 
             head_part, tail_part = sample
             # head_part : batch_size x 3
@@ -861,7 +858,7 @@ class AlignModel(NegSampleModel):
         self.entity_embedding = entity_embedding
 
     def forward(self, sample, mode):
-        if mode == "align-single":
+        if mode.endswith("single"):
             batch_size, negative_sample_size = sample.size(0), 1
             head = torch.index_select(
                 self.entity_embedding,
@@ -874,7 +871,7 @@ class AlignModel(NegSampleModel):
                 dim=0,
                 index=sample[:, 1]
             ).unsqueeze(1)
-        elif mode == 'align-head-batch':
+        elif mode.endswith("head-batch"):
             tail_part, head_part = sample
             batch_size, negative_sample_size = head_part.size(0), head_part.size(1)
 
@@ -889,7 +886,7 @@ class AlignModel(NegSampleModel):
                 dim=0,
                 index=tail_part[:, 1]
             ).unsqueeze(1)
-        elif mode == 'align-tail-batch':
+        elif mode.endswith("tail-batch"):
             head_part, tail_part = sample
             batch_size, negative_sample_size = tail_part.size(0), tail_part.size(1)
             head = torch.index_select(
@@ -1066,7 +1063,7 @@ class NegSampleContext(Context):
         positive_sample = positive_sample.to(self.device)
         negative_sample = negative_sample.to(self.device)
         subsampling_weight = subsampling_weight.to(self.device)
-        return NegSampleModel.loss(model, self.model_key,
+        return NegSampleModel.get_loss(model, self.model_key,
                                    positive_sample, negative_sample, subsampling_weight, mode, single_mode)
 
 
@@ -1136,7 +1133,6 @@ class KGEModel(nn.Module):
         self.sub_model_dict = dict()
 
     def forward(self, sample, model_key):
-        print(sample)
         if self.sub_model_dict is None:
             raise ValueError('sub_model_dict is None')
         elif model_key in self.sub_model_dict:
