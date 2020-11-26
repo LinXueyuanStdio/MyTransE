@@ -687,8 +687,8 @@ class RotatERelationModel(RelationTripleModel):
 
         pi = 3.14159265358979323846
 
-        re_head, im_head = torch.chunk(head, 2, dim=2)
-        re_tail, im_tail = torch.chunk(tail, 2, dim=2)
+        re_head, im_head = head, head  # torch.chunk(head, 2, dim=2)
+        re_tail, im_tail = tail, tail  # torch.chunk(tail, 2, dim=2)
 
         # Make phases of relations uniformly distributed in [-pi, pi]
 
@@ -825,8 +825,8 @@ class RotatEAttrModel(AttrTripleModel):
 
         pi = 3.14159265358979323846
 
-        re_head, im_head = torch.chunk(head, 2, dim=2)
-        re_tail, im_tail = torch.chunk(tail, 2, dim=2)
+        re_head, im_head = head, head  # torch.chunk(head, 2, dim=2)
+        re_tail, im_tail = tail, tail  # torch.chunk(tail, 2, dim=2)
 
         # Make phases of relations uniformly distributed in [-pi, pi]
 
