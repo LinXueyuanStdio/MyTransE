@@ -1889,7 +1889,7 @@ class MTransE:
 @click.option('--visualize', default=False, help='训练时可视化')
 @click.option('--gcn', default=False, help='GCN-Align的对齐模块')
 @click.option('--my', default=False, help='我设计的对齐模块')
-def main(recover, lang, output, soft_align, data_enhance, visualize, gcn, my):
+def main(recover, lang, output, data_enhance, visualize, gcn, my):
     result_path = (output + "/%s/") % lang
     data_path = "./data/%s/" % lang
     data_manager = DataManager(
