@@ -561,7 +561,7 @@ class NegSampleModel(SubModel):
 
     def score(self, sample):
         subsample, mode = sample
-        self.forward(sample, mode)
+        return self.forward(sample, mode)
 
     def forward(self, sample, mode):
         raise NotImplementedError
@@ -1137,7 +1137,7 @@ class KGEModel(nn.Module):
             raise ValueError('sub_model_dict is None')
         elif model_key in self.sub_model_dict:
             model = self.sub_model_dict[model_key]
-            if model is NegSampleModel:
+            if isinstance(model, NegSampleModel):
                 score = model.score(sample)
                 return score
             else:
