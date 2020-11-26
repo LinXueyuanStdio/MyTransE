@@ -1110,7 +1110,7 @@ class KGEModel(nn.Module):
             b=self.embedding_range.item()
         )
 
-        self.attr_embedding = nn.Parameter(torch.zeros(attr_count, self.nattr_dim))
+        self.attr_embedding = nn.Parameter(torch.zeros(attr_count, self.attr_dim))
         # nn.init.normal_(self.attr_embedding)
         nn.init.uniform_(
             tensor=self.attr_embedding,
