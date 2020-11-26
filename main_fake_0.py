@@ -1583,9 +1583,9 @@ class MTransE:
     def init_relation_triple_dataset(self,
                                      name,
                                      negative_sample_size=1024,
-                                     batch_size=1024,
+                                     batch_size=512,
                                      shuffle=False,
-                                     num_workers=8):
+                                     num_workers=4):
         train_dataloader_head = DataLoader(
             TripleTrainDataset(self.data_manager.relation_triples,
                                self.data_manager.entity_count,
@@ -1616,9 +1616,9 @@ class MTransE:
     def init_attr_triple_dataset(self,
                                  name,
                                  negative_sample_size=1024,
-                                 batch_size=1024,
+                                 batch_size=512,
                                  shuffle=False,
-                                 num_workers=8):
+                                 num_workers=4):
         train_dataloader_head = DataLoader(
             TripleTrainDataset(self.data_manager.attr_triples,
                                self.data_manager.entity_count,
@@ -1648,10 +1648,10 @@ class MTransE:
 
     def init_align_dataset(self,
                            name,
-                           negative_sample_size=500,
-                           batch_size=500,
+                           negative_sample_size=512,
+                           batch_size=512,
                            shuffle=True,
-                           num_workers=8):
+                           num_workers=4):
         align_dataloader_head = DataLoader(
             AlignDataset(self.data_manager.train_seeds,
                          self.data_manager.kg1_entity_list,
@@ -1681,10 +1681,10 @@ class MTransE:
 
     def init_av_dataset(self,
                         name,
-                        negative_sample_size=500,
-                        batch_size=500,
+                        negative_sample_size=512,
+                        batch_size=512,
                         shuffle=True,
-                        num_workers=8):
+                        num_workers=4):
         av_dataloader_head = DataLoader(
             AVDistanceDataset(self.data_manager.train_seeds,
                               self.data_manager.attr_triples,
