@@ -102,7 +102,8 @@ class TripleTrainDataset(Dataset):
         negative_sample = torch.stack([_[1] for _ in data], dim=0)
         subsample_weight = torch.cat([_[2] for _ in data], dim=0)
         mode = data[0][3]
-        return positive_sample, negative_sample, subsample_weight, mode
+        single_mode = data[0][4]
+        return positive_sample, negative_sample, subsample_weight, mode, single_mode
 
     @staticmethod
     def count_frequency(triples, start=4):
@@ -251,7 +252,8 @@ class AVDistanceDataset(Dataset):
         negative_sample = torch.stack([_[1] for _ in data], dim=0)
         subsample_weight = torch.cat([_[2] for _ in data], dim=0)
         mode = data[0][3]
-        return positive_sample, negative_sample, subsample_weight, mode
+        single_mode = data[0][4]
+        return positive_sample, negative_sample, subsample_weight, mode, single_mode
 
     @staticmethod
     def count_frequency(seeds, start=4):
@@ -370,7 +372,8 @@ class AlignDataset(Dataset):
         negative_sample = torch.stack([_[1] for _ in data], dim=0)
         subsample_weight = torch.cat([_[2] for _ in data], dim=0)
         mode = data[0][3]
-        return positive_sample, negative_sample, subsample_weight, mode
+        single_mode = data[0][4]
+        return positive_sample, negative_sample, subsample_weight, mode, single_mode
 
     def count_frequency(self, seeds: List[Tuple[int, int]], start=4):
         """
