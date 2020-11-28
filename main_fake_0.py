@@ -1837,6 +1837,7 @@ class MTransE:
                 self.summary_writer.add_scalar(tag='Loss/loss', scalar_value=loss, global_step=step)
 
             if step > init_step and step % test_steps == 0:
+                logger.info("")
                 hits, score = self.run_test()
 
                 if self.visualize:
